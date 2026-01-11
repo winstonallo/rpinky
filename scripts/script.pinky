@@ -1,9 +1,15 @@
-# This is a comment
-+**-;    ;+
-++++++
------
-<< <= := == ~= ~ ;
+--------------------------------------
+-- initialize variables
+--------------------------------------
 
-123 123.123
+pi := 3.141592
+x := 8.23 - -3.5
 
-"Hello, World!"
+--------------------------------------
+-- Test if x is positive or negative
+--------------------------------------
+if x >= 0 then
+    println('x is positive')
+else
+    println('x is negative')
+end
