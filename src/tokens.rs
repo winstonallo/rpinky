@@ -1,10 +1,10 @@
 #[derive(PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Lexeme<'tok> {
-    value: &'tok [u8],
+pub struct Lexeme<'src> {
+    value: &'src [u8],
 }
 
-impl<'tok> Lexeme<'tok> {
-    pub fn new(value: &'tok [u8]) -> Self {
+impl<'src> Lexeme<'src> {
+    pub fn new(value: &'src [u8]) -> Self {
         Self { value }
     }
 }
@@ -26,7 +26,7 @@ impl std::fmt::Debug for Lexeme<'_> {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Token<'tok> {
+pub enum Token<'src> {
     LParen { line: usize },    // (
     RParen { line: usize },    // )
     LCurly { line: usize },    // {
@@ -47,19 +47,20 @@ pub enum Token<'tok> {
     Not { line: usize },       // ~
     Greater { line: usize },   // >
     Less { line: usize },      // <
+    Equal { line: usize },     // =
     // Two-char tokens
     GreaterEqual { line: usize },   // >=
     LessEqual { line: usize },      // <=
     NotEqual { line: usize },       // ~=
-    Equal { line: usize },          // ==
+    EqualEqual { line: usize },     // ==
     Assign { line: usize },         // :=
     GreaterGreater { line: usize }, // >>
     LessLess { line: usize },       // <<
     // Literals
-    Identifier { lexeme: Lexeme<'tok>, line: usize },
-    StringLiteral { lexeme: Lexeme<'tok>, line: usize },
-    IntegerLiteral { lexeme: Lexeme<'tok>, line: usize },
-    FloatLiteral { lexeme: Lexeme<'tok>, line: usize },
+    Identifier { lexeme: Lexeme<'src>, line: usize },
+    StringLiteral { lexeme: Lexeme<'src>, line: usize },
+    IntegerLiteral { lexeme: Lexeme<'src>, line: usize },
+    FloatLiteral { lexeme: Lexeme<'src>, line: usize },
     // Keywords
     If { line: usize },
     Then { line: usize },

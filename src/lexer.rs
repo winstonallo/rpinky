@@ -1,15 +1,15 @@
 use crate::tokens::{Lexeme, Token};
 
-pub struct Lexer<'lex> {
-    source: &'lex [u8],
+pub struct Lexer<'src> {
+    source: &'src [u8],
     start: usize,
     curr: usize,
     line: usize,
-    tokens: Vec<Token<'lex>>,
+    tokens: Vec<Token<'src>>,
 }
 
-impl<'lex> Lexer<'lex> {
-    pub fn new(source: &'lex [u8]) -> Self {
+impl<'src> Lexer<'src> {
+    pub fn new(source: &'src [u8]) -> Self {
         Self {
             source,
             start: 0,
@@ -54,6 +54,8 @@ impl<'lex> Lexer<'lex> {
                 b'%' => self.tokens.push(Token::Mod { line: self.line }),
                 b'=' => {
                     if self.match_on(b'=') {
+                        self.tokens.push(Token::EqualEqual { line: self.line });
+                    } else {
                         self.tokens.push(Token::Equal { line: self.line });
                     }
                 }

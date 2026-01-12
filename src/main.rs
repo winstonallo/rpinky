@@ -1,6 +1,8 @@
-use crate::lexer::Lexer;
+use crate::{lexer::Lexer, parser::Parser};
 
 mod lexer;
+mod model;
+mod parser;
 mod tokens;
 
 #[derive(Debug, thiserror::Error)]
@@ -26,6 +28,9 @@ fn main() -> Result<(), CiflError> {
     for tok in tokens {
         println!("{tok:?}")
     }
+
+    let parser = Parser::new(tokens);
+    let ast = parser.parse();
 
     Ok(())
 }

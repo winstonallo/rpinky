@@ -1,15 +1,5 @@
 --------------------------------------
--- initialize variables
+-- Simple expression
 --------------------------------------
 
-pi := 3.141592
-x := 8.23 - -3.5
-
---------------------------------------
--- Test if x is positive or negative
---------------------------------------
-if x >= 0 then
-    println('x is positive')
-else
-    println('x is negative')
-end
+2 + 42 * 2 + (47 * -21)
