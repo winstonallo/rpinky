@@ -1,12 +1,54 @@
+use std::fmt::write;
+
 use crate::tokens::Token;
 
 /// Evaluates to a result
-pub trait Expr {}
+#[derive(Clone)]
+pub enum Expr<'src> {
+    Integer(Integer),
+    Float(Float),
+    Grouping(Box<Expr<'src>>),
+    UnOp(UnOp<'src>),
+    BinOp(BinOp<'src>),
+}
+
+fn print_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
+    let indentation = indentation.unwrap_or(0);
+    match ast {
+        Expr::Integer(int) => writeln!(f, "{}{int:?}", " ".repeat(indentation)),
+        Expr::Float(float) => writeln!(f, "{}{float:?}", " ".repeat(indentation)),
+        Expr::Grouping(group) => {
+            writeln!(f, "{}(", " ".repeat(indentation))?;
+            print_ast(group, f, Some(indentation + 4))?;
+            writeln!(f, "{})", " ".repeat(indentation))
+        }
+        Expr::UnOp(unop) => {
+            writeln!(f, "{}UnOp {{", " ".repeat(indentation))?;
+            writeln!(f, "{}{:?}", " ".repeat(indentation + 4), unop.operator)?;
+            print_ast(&unop.operand, f, Some(indentation + 4))?;
+            writeln!(f, "{}}} // unop", " ".repeat(indentation))
+        }
+        Expr::BinOp(binop) => {
+            writeln!(f, "{}BinOp {{", " ".repeat(indentation))?;
+            print_ast(&binop.lhs, f, Some(indentation + 4))?;
+            writeln!(f, "{}{:?}", " ".repeat(indentation + 4), binop.operator)?;
+            print_ast(&binop.rhs, f, Some(indentation + 4))?;
+            // writeln!(f, "{}{:?}{:?}{:?}", " ".repeat(indentation + 4), binop.lhs, binop.operator, binop.rhs)?;
+            writeln!(f, "{}}} // binop", " ".repeat(indentation))
+        }
+    }
+}
+
+impl<'src> std::fmt::Debug for Expr<'src> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        print_ast(self, f, None)
+    }
+}
 
 /// Performs an action
 pub trait Stmt {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Integer {
     value: isize,
 }
@@ -24,15 +66,13 @@ impl TryFrom<&[u8]> for Integer {
     }
 }
 
-impl Expr for Integer {}
-
 impl Integer {
     pub fn new(value: isize) -> Self {
         Self { value }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Float {
     value: f64,
 }
@@ -56,36 +96,37 @@ impl TryFrom<&[u8]> for Float {
     }
 }
 
-impl Expr for Float {}
-
-#[derive(Debug)]
-pub struct BinOp<'src, T: Expr, U: Expr> {
+#[derive(Debug, Clone)]
+pub struct BinOp<'src> {
     operator: Token<'src>,
-    lhs: T,
-    rhs: U,
+    lhs: Box<Expr<'src>>,
+    rhs: Box<Expr<'src>>,
 }
 
-impl<'src, T: Expr, U: Expr> BinOp<'src, T, U> {
-    pub fn new(operator: Token<'src>, lhs: T, rhs: U) -> Self {
-        Self { operator, lhs, rhs }
+impl<'src> BinOp<'src> {
+    pub fn new(operator: Token<'src>, lhs: Expr<'src>, rhs: Expr<'src>) -> Self {
+        Self {
+            operator,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        }
     }
 }
 
-impl<'src, T: Expr, U: Expr> Expr for BinOp<'src, T, U> {}
-
-#[derive(Debug)]
-pub struct UnOp<'src, T: Expr> {
+#[derive(Debug, Clone)]
+pub struct UnOp<'src> {
     operator: Token<'src>,
-    operand: T,
+    operand: Box<Expr<'src>>,
 }
 
-impl<'src, T: Expr> UnOp<'src, T> {
-    pub fn new(operator: Token<'src>, operand: T) -> Self {
-        Self { operator, operand }
+impl<'src> UnOp<'src> {
+    pub fn new(operator: Token<'src>, operand: Expr<'src>) -> Self {
+        Self {
+            operator,
+            operand: Box::new(operand),
+        }
     }
 }
-
-impl<'src, T: Expr> Expr for UnOp<'src, T> {}
 
 pub struct WhileStmt {}
 
@@ -94,16 +135,3 @@ impl Stmt for WhileStmt {}
 pub struct Assignment {}
 
 impl Stmt for Assignment {}
-
-/// '(' <expr> ')'
-pub struct Grouping<T: Expr> {
-    value: T,
-}
-
-impl<T: Expr> Expr for Grouping<T> {}
-
-impl<T: Expr> Grouping<T> {
-    pub fn new(value: T) -> Self {
-        Self { value }
-    }
-}
