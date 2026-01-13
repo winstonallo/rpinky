@@ -1,4 +1,4 @@
-#[derive(PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Lexeme<'src> {
     value: &'src [u8],
 }
@@ -29,7 +29,7 @@ impl std::fmt::Debug for Lexeme<'_> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Token<'src> {
     LParen { line: usize },    // (
     RParen { line: usize },    // )
