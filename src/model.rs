@@ -1,5 +1,3 @@
-use std::fmt::write;
-
 use crate::tokens::Token;
 
 /// Evaluates to a result

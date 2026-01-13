@@ -81,7 +81,7 @@ impl<'src> Parser<'src> {
                 if !self.match_curr(|tok| matches!(tok, Token::RParen { .. })) {
                     panic!("Expected ')'");
                 }
-                return Expr::Grouping(Box::new(expr));
+                Expr::Grouping(Box::new(expr))
             }
             _ => panic!("bruh"),
         }
