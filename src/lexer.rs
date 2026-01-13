@@ -38,7 +38,7 @@ impl<'src> Lexer<'src> {
                 b',' => self.tokens.push(Token::Comma { line: self.line }),
                 b'+' => self.tokens.push(Token::Plus { line: self.line }),
                 b'-' => {
-                    if self.match_on(b'-') {
+                    if self.match_curr(b'-') {
                         while self.peek().is_some_and(|c| c != b'\n') {
                             self.advance();
                         }
@@ -53,39 +53,39 @@ impl<'src> Lexer<'src> {
                 b'?' => self.tokens.push(Token::Question { line: self.line }),
                 b'%' => self.tokens.push(Token::Mod { line: self.line }),
                 b'=' => {
-                    if self.match_on(b'=') {
+                    if self.match_curr(b'=') {
                         self.tokens.push(Token::EqualEqual { line: self.line });
                     } else {
                         self.tokens.push(Token::Equal { line: self.line });
                     }
                 }
                 b'~' => {
-                    if self.match_on(b'=') {
+                    if self.match_curr(b'=') {
                         self.tokens.push(Token::NotEqual { line: self.line });
                     } else {
                         self.tokens.push(Token::Not { line: self.line });
                     }
                 }
                 b'<' => {
-                    if self.match_on(b'=') {
+                    if self.match_curr(b'=') {
                         self.tokens.push(Token::LessEqual { line: self.line });
-                    } else if self.match_on(b'<') {
+                    } else if self.match_curr(b'<') {
                         self.tokens.push(Token::LessLess { line: self.line });
                     } else {
                         self.tokens.push(Token::Less { line: self.line });
                     }
                 }
                 b'>' => {
-                    if self.match_on(b'=') {
+                    if self.match_curr(b'=') {
                         self.tokens.push(Token::GreaterEqual { line: self.line });
-                    } else if self.match_on(b'>') {
+                    } else if self.match_curr(b'>') {
                         self.tokens.push(Token::GreaterGreater { line: self.line });
                     } else {
                         self.tokens.push(Token::Greater { line: self.line });
                     }
                 }
                 b':' => {
-                    if self.match_on(b'=') {
+                    if self.match_curr(b'=') {
                         self.tokens.push(Token::Assign { line: self.line });
                     } else {
                         self.tokens.push(Token::Colon { line: self.line });
@@ -181,7 +181,7 @@ impl<'src> Lexer<'src> {
         Some(self.source[self.curr + n])
     }
 
-    pub fn match_on(&mut self, expected: u8) -> bool {
+    pub fn match_curr(&mut self, expected: u8) -> bool {
         if self.curr >= self.source.len() {
             return false;
         }
