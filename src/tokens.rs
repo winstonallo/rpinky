@@ -7,6 +7,10 @@ impl<'src> Lexeme<'src> {
     pub fn new(value: &'src [u8]) -> Self {
         Self { value }
     }
+
+    pub fn value(&self) -> &[u8] {
+        self.value
+    }
 }
 
 // impl Display for Lexeme so the bytes are displayed as chars.
