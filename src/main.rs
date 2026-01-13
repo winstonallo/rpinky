@@ -29,8 +29,11 @@ fn main() -> Result<(), CiflError> {
         println!("{tok:?}")
     }
 
-    let parser = Parser::new(tokens);
+    println!();
+
+    let mut parser = Parser::new(tokens);
     let ast = parser.parse();
+    println!("{ast:?}");
 
     Ok(())
 }
