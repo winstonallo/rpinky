@@ -58,5 +58,5 @@ fn main() {
         }
     };
 
-    println!("{val:?}");
+    println!("{val}");
 }
