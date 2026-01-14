@@ -39,6 +39,24 @@ impl TokenizationError {
 }
 
 #[derive(Debug, thiserror::Error)]
+pub struct RuntimeError {
+    message: String,
+    line: usize,
+}
+
+impl std::fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{} line {}: {}", "error:".red().bold(), self.line, self.message)
+    }
+}
+
+impl RuntimeError {
+    pub fn new(message: String, line: usize) -> Self {
+        Self { message, line }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum CompileError {
     #[error("Parse Error")]
     Parse {
@@ -49,5 +67,10 @@ pub enum CompileError {
     Lex {
         #[from]
         source: TokenizationError,
+    },
+    #[error("Runtime Error")]
+    Runtime {
+        #[from]
+        source: RuntimeError,
     },
 }

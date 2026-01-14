@@ -143,6 +143,14 @@ impl Bool {
     pub fn new(value: bool, line: usize) -> Self {
         Self { value, line }
     }
+
+    pub fn value(&self) -> bool {
+        self.value
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -159,7 +167,9 @@ impl<'src> TryFrom<&Token<'src>> for StringType {
             return Err(ParseError::new(format!("expected string literal, got {token:?}"), token.line()));
         };
         Ok(Self {
-            value: String::from_utf8(lexeme.value().to_vec()).map_err(|e| ParseError::new(format!("Invalid UTF-8 string: {e}"), token.line()))?,
+            // remove the quotes from lexeme
+            value: String::from_utf8(lexeme.value()[1..lexeme.value().len() - 1].to_vec())
+                .map_err(|e| ParseError::new(format!("Invalid UTF-8 string: {e}"), token.line()))?,
             line: token.line(),
         })
     }
@@ -168,6 +178,14 @@ impl<'src> TryFrom<&Token<'src>> for StringType {
 impl StringType {
     pub fn new(value: String, line: usize) -> Self {
         Self { value, line }
+    }
+
+    pub fn value(&self) -> &str {
+        &self.value
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
 

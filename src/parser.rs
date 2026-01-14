@@ -90,18 +90,31 @@ impl<'src> Parser<'src> {
                 }
                 Ok(Expr::Grouping(Box::new(expr)))
             }
-            _ => return Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
+            _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
         }
     }
 
-    /// `<unary> ::= ( '+' | '-' | '~' ) <unary> | <primary>`
+    /// `<exponent> ::= <unary> ( '^' <power> )?`
+    fn exponent(&mut self) -> Result<Expr<'src>, ParseError> {
+        let base = self.primary()?;
+
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Caret { .. })) {
+            let operator = self.previous_token();
+            let exponent = self.unary()?;
+            return Ok(Expr::BinOp(BinOp::new(operator, base, exponent)));
+        }
+
+        Ok(base)
+    }
+
+    /// `<unary> ::= ( '+' | '-' | '~' ) <unary> | <exponent>`
     fn unary(&mut self) -> Result<Expr<'src>, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. } | TokenKind::Plus { .. })) {
             let operator = self.previous_token();
             let operand = self.unary()?;
             return Ok(Expr::UnOp(UnOp::new(operator, operand)));
         }
-        self.primary()
+        self.exponent()
     }
 
     /// `<multiplication> ::= <unary> ( ( '*' | '/' ) <unary> )*`

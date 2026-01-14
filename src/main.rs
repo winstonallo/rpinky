@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use clap::Parser as _;
 use colored::Colorize;
 
@@ -52,5 +54,5 @@ fn main() {
 
     let val = interpreter.interpret(&ast);
 
-    println!("{val}");
+    println!("{val:?}");
 }
