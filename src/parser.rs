@@ -109,7 +109,7 @@ impl<'src> Parser<'src> {
 
     /// `<unary> ::= ( '+' | '-' | '~' ) <unary> | <exponent>`
     fn unary(&mut self) -> Result<Expr<'src>, ParseError> {
-        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. } | TokenKind::Plus { .. })) {
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. })) {
             let operator = self.previous_token();
             let operand = self.unary()?;
             return Ok(Expr::UnOp(UnOp::new(operator, operand)));
@@ -152,7 +152,34 @@ impl<'src> Parser<'src> {
         Ok(expr)
     }
 
+    /// `<comparison> := <addition> ( ( '<' | '<=' | '>' | '>=' ) <addition> )*`
+    fn comparison(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.addition()?;
+        while self.match_curr(|tok| {
+            matches!(
+                tok.kind(),
+                TokenKind::Less { .. } | TokenKind::LessEqual { .. } | TokenKind::Greater { .. } | TokenKind::GreaterEqual { .. }
+            )
+        }) {
+            let operator = self.previous_token();
+            let right = self.addition()?;
+            expr = Expr::BinOp(BinOp::new(operator, expr, right));
+        }
+        Ok(expr)
+    }
+
+    /// `<equality> := <comparison> ( ( '==' | '~='  ) <comparison> )*`
+    fn equality(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.comparison()?;
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::EqualEqual { .. } | TokenKind::NotEqual { .. })) {
+            let operator = self.previous_token();
+            let right = self.comparison()?;
+            expr = Expr::BinOp(BinOp::new(operator, expr, right));
+        }
+        Ok(expr)
+    }
+
     pub fn parse(&mut self) -> Result<Expr<'src>, ParseError> {
-        self.addition()
+        self.equality()
     }
 }
