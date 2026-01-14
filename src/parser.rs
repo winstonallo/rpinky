@@ -61,16 +61,16 @@ impl<'src> Parser<'src> {
     fn primary(&mut self) -> Expr<'src> {
         let token = self.peek();
         match token {
-            Token::IntegerLiteral { lexeme, .. } => {
+            Token::IntegerLiteral { .. } => {
                 self.advance();
-                if let Ok(int) = Integer::try_from(lexeme.value()) {
+                if let Ok(int) = Integer::try_from(&token) {
                     return Expr::Integer(int);
                 }
                 panic!("brint");
             }
-            Token::FloatLiteral { lexeme, .. } => {
+            Token::FloatLiteral { .. } => {
                 self.advance();
-                if let Ok(float) = Float::try_from(lexeme.value()) {
+                if let Ok(float) = Float::try_from(&token) {
                     return Expr::Float(float);
                 }
                 panic!("broat");

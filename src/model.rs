@@ -10,28 +10,27 @@ pub enum Expr<'src> {
     BinOp(BinOp<'src>),
 }
 
-fn print_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
+fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
     let indentation = indentation.unwrap_or(0);
     match ast {
         Expr::Integer(int) => writeln!(f, "{}{int:?}", " ".repeat(indentation)),
         Expr::Float(float) => writeln!(f, "{}{float:?}", " ".repeat(indentation)),
         Expr::Grouping(group) => {
-            writeln!(f, "{}(", " ".repeat(indentation))?;
-            print_ast(group, f, Some(indentation + 4))?;
-            writeln!(f, "{})", " ".repeat(indentation))
+            writeln!(f, "{}Grouping (", " ".repeat(indentation))?;
+            dump_ast(group, f, Some(indentation + 4))?;
+            writeln!(f, "{}) // grouping", " ".repeat(indentation))
         }
         Expr::UnOp(unop) => {
             writeln!(f, "{}UnOp {{", " ".repeat(indentation))?;
             writeln!(f, "{}{:?}", " ".repeat(indentation + 4), unop.operator)?;
-            print_ast(&unop.operand, f, Some(indentation + 4))?;
+            dump_ast(&unop.operand, f, Some(indentation + 4))?;
             writeln!(f, "{}}} // unop", " ".repeat(indentation))
         }
         Expr::BinOp(binop) => {
             writeln!(f, "{}BinOp {{", " ".repeat(indentation))?;
-            print_ast(&binop.lhs, f, Some(indentation + 4))?;
+            dump_ast(&binop.lhs, f, Some(indentation + 4))?;
             writeln!(f, "{}{:?}", " ".repeat(indentation + 4), binop.operator)?;
-            print_ast(&binop.rhs, f, Some(indentation + 4))?;
-            // writeln!(f, "{}{:?}{:?}{:?}", " ".repeat(indentation + 4), binop.lhs, binop.operator, binop.rhs)?;
+            dump_ast(&binop.rhs, f, Some(indentation + 4))?;
             writeln!(f, "{}}} // binop", " ".repeat(indentation))
         }
     }
@@ -39,7 +38,7 @@ fn print_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<us
 
 impl<'src> std::fmt::Debug for Expr<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        print_ast(self, f, None)
+        dump_ast(self, f, None)
     }
 }
 
@@ -49,47 +48,45 @@ pub trait Stmt {}
 #[derive(Debug, Clone, Copy)]
 pub struct Integer {
     value: isize,
+    line: usize,
 }
 
-impl TryFrom<&[u8]> for Integer {
+impl TryFrom<&Token<'_>> for Integer {
     type Error = String;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &Token<'_>) -> Result<Self, Self::Error> {
+        let Token::IntegerLiteral { lexeme, line } = value else {
+            return Err(format!("Expected Token::IntegerLiteral, got {value:?}"));
+        };
         Ok(Self {
-            value: std::str::from_utf8(value)
+            value: std::str::from_utf8(lexeme.value())
                 .map_err(|e| format!("Invalid UTF-8 string: {e}"))?
                 .parse()
                 .map_err(|e| format!("Could not parse as isize: {e}"))?,
+            line: *line,
         })
-    }
-}
-
-impl Integer {
-    pub fn new(value: isize) -> Self {
-        Self { value }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Float {
     value: f64,
+    line: usize,
 }
 
-impl Float {
-    pub fn new(value: f64) -> Self {
-        Self { value }
-    }
-}
-
-impl TryFrom<&[u8]> for Float {
+impl TryFrom<&Token<'_>> for Float {
     type Error = String;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &Token<'_>) -> Result<Self, Self::Error> {
+        let Token::FloatLiteral { lexeme, line } = value else {
+            return Err(format!("Expected Token::FloatLiteral, got {value:?}"));
+        };
         Ok(Self {
-            value: std::str::from_utf8(value)
+            value: std::str::from_utf8(lexeme.value())
                 .map_err(|e| format!("Invalid UTF-8 string: {e}"))?
                 .parse()
                 .map_err(|e| format!("Could not parse as isize: {e}"))?,
+            line: *line,
         })
     }
 }
