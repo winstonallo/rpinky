@@ -78,7 +78,7 @@ impl<'src> Parser<'src> {
                 }
                 Ok(Expr::Grouping(Box::new(expr)))
             }
-            _ => panic!("bruh"),
+            _ => return Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
         }
     }
 
