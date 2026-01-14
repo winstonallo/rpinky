@@ -72,7 +72,7 @@ impl<'src> Parser<'src> {
             }
             TokenKind::LParen { .. } => {
                 self.advance();
-                let expr = self.expr()?;
+                let expr = self.addition()?;
                 if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen { .. })) {
                     return Err(ParseError::new("expected closing ')'".into(), token.line()));
                 }
@@ -92,34 +92,29 @@ impl<'src> Parser<'src> {
         self.primary()
     }
 
-    /// `<factor> ::= <unary>`
-    fn factor(&mut self) -> Result<Expr<'src>, ParseError> {
-        self.unary()
-    }
-
-    /// `<term> ::= <factor> ( ( '*' | '/' ) <factor> )*`
-    fn term(&mut self) -> Result<Expr<'src>, ParseError> {
-        let mut expr = self.factor()?;
+    /// `<multiplication> ::= <unary> ( ( '*' | '/' ) <unary> )*`
+    fn multiplication(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.unary()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star { .. } | TokenKind::Slash { .. })) {
             let operator = self.previous_token();
-            let right = self.factor()?;
+            let right = self.unary()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
         }
         Ok(expr)
     }
 
-    /// `<expr> ::= <term> ( ( '+' | '-' ) <term> )*`
-    fn expr(&mut self) -> Result<Expr<'src>, ParseError> {
-        let mut expr = self.term()?;
+    /// `<addition> ::= <multiplication> ( ( '+' | '-' ) <multiplication> )*`
+    fn addition(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.multiplication()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus { .. } | TokenKind::Minus { .. })) {
             let operator = self.previous_token();
-            let right = self.term()?;
+            let right = self.multiplication()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
         }
         Ok(expr)
     }
 
     pub fn parse(&mut self) -> Result<Expr<'src>, ParseError> {
-        self.expr()
+        self.addition()
     }
 }
