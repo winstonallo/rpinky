@@ -35,7 +35,7 @@ impl Type {
         }
     }
 
-    // Need to implement cmp like this because `std::cmd::Ordering` does not support returning a `Result`.
+    // Need to implement `cmp` like this because `std::cmd::Ordering` does not support returning a `Result`.
     pub fn cmp(&self, rhs: &Self) -> Result<std::cmp::Ordering, RuntimeError> {
         match (self, rhs) {
             (Type::Bool { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.cmp(rhs)),
@@ -59,14 +59,57 @@ impl Type {
         }
     }
 
-    // Need to implement cmp like this because `std::cmd::Eq` does not support returning a `Result`.
-    pub fn eq(&self, rhs: &Self) -> Result<bool, RuntimeError> {
+    pub fn gt(&self, rhs: &Self) -> Result<Type, RuntimeError> {
+        Ok(Type::Bool {
+            value: self.cmp(&rhs)?.is_gt(),
+            line: self.line(),
+        })
+    }
+
+    pub fn ge(&self, rhs: &Self) -> Result<Type, RuntimeError> {
+        Ok(Type::Bool {
+            value: self.cmp(&rhs)?.is_ge(),
+            line: self.line(),
+        })
+    }
+
+    pub fn lt(&self, rhs: &Self) -> Result<Type, RuntimeError> {
+        Ok(Type::Bool {
+            value: self.cmp(&rhs)?.is_lt(),
+            line: self.line(),
+        })
+    }
+
+    pub fn le(&self, rhs: &Self) -> Result<Type, RuntimeError> {
+        Ok(Type::Bool {
+            value: self.cmp(&rhs)?.is_le(),
+            line: self.line(),
+        })
+    }
+
+    // Need to implement `eq` like this because `std::cmd::Eq` does not support returning a `Result`.
+    pub fn eq(&self, rhs: &Self) -> Result<Type, RuntimeError> {
         match (self, rhs) {
-            (Type::Bool { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.eq(rhs)),
-            (Type::Number { value: lhs, .. }, Type::Number { value: rhs, .. }) => Ok(lhs.eq(rhs)),
-            (Type::String { value: lhs, .. }, Type::String { value: rhs, .. }) => Ok(lhs.eq(rhs)),
-            (Type::Bool { value: lhs, .. }, Type::Number { value: rhs, .. }) => Ok((*lhs as u8 as f64).eq(rhs)),
-            (Type::Number { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.eq(&(*rhs as u8 as f64))),
+            (Type::Bool { value: lhs, line }, Type::Bool { value: rhs, .. }) => Ok(Type::Bool {
+                value: lhs.eq(rhs),
+                line: *line,
+            }),
+            (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => Ok(Type::Bool {
+                value: lhs.eq(rhs),
+                line: *line,
+            }),
+            (Type::String { value: lhs, line }, Type::String { value: rhs, .. }) => Ok(Type::Bool {
+                value: lhs.eq(rhs),
+                line: *line,
+            }),
+            (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => Ok(Type::Bool {
+                value: (*lhs as u8 as f64).eq(rhs),
+                line: *line,
+            }),
+            (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => Ok(Type::Bool {
+                value: lhs.eq(&(*rhs as u8 as f64)),
+                line: *line,
+            }),
             (lhs, rhs) => Err(RuntimeError::new(format!("equality not supported between {rhs} and {lhs}"), lhs.line())),
         }
     }
@@ -188,30 +231,12 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
                 TokenKind::Slash => lhs / rhs,
                 TokenKind::Caret => lhs.pow(rhs),
                 TokenKind::Mod => lhs % rhs,
-                TokenKind::Greater => Ok(Type::Bool {
-                    value: lhs.cmp(&rhs)?.is_gt(),
-                    line: lhs.line(),
-                }),
-                TokenKind::GreaterEqual => Ok(Type::Bool {
-                    value: lhs.cmp(&rhs)?.is_ge(),
-                    line: lhs.line(),
-                }),
-                TokenKind::Less => Ok(Type::Bool {
-                    value: lhs.cmp(&rhs)?.is_lt(),
-                    line: lhs.line(),
-                }),
-                TokenKind::LessEqual => Ok(Type::Bool {
-                    value: lhs.cmp(&rhs)?.is_le(),
-                    line: lhs.line(),
-                }),
-                TokenKind::EqualEqual => Ok(Type::Bool {
-                    value: lhs.eq(&rhs)?,
-                    line: lhs.line(),
-                }),
-                TokenKind::NotEqual => Ok(Type::Bool {
-                    value: !lhs.eq(&rhs)?,
-                    line: lhs.line(),
-                }),
+                TokenKind::Greater => lhs.gt(&rhs),
+                TokenKind::GreaterEqual => lhs.ge(&rhs),
+                TokenKind::Less => lhs.lt(&rhs),
+                TokenKind::LessEqual => lhs.le(&rhs),
+                TokenKind::EqualEqual => lhs.eq(&rhs),
+                TokenKind::NotEqual => Ok(!lhs.eq(&rhs)?),
                 _ => panic!("unsupported binary operation {binop:?}"),
             }
         }
