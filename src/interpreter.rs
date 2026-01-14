@@ -34,6 +34,42 @@ impl Type {
             Type::Bool { line, .. } | Type::Number { line, .. } | Type::String { line, .. } => *line,
         }
     }
+
+    // Need to implement cmp like this because `std::cmd::Ordering` does not support returning a `Result`.
+    pub fn cmp(&self, rhs: &Self) -> Result<std::cmp::Ordering, RuntimeError> {
+        match (self, rhs) {
+            (Type::Bool { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.cmp(rhs)),
+            (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => match lhs.partial_cmp(rhs) {
+                Some(ordering) => Ok(ordering),
+                // one of the values is NaN
+                None => Err(RuntimeError::new(format!("cannot get compare {lhs} to {rhs}"), *line)),
+            },
+            (Type::String { value: lhs, .. }, Type::String { value: rhs, .. }) => Ok(lhs.cmp(rhs)),
+            (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => match (*lhs as u8 as f64).partial_cmp(rhs) {
+                Some(ordering) => Ok(ordering),
+                // rhs is NaN
+                None => Err(RuntimeError::new(format!("cannot get compare {lhs} to {rhs}"), *line)),
+            },
+            (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => match lhs.partial_cmp(&(*rhs as u8 as f64)) {
+                Some(ordering) => Ok(ordering),
+                // lhs is NaN
+                None => Err(RuntimeError::new(format!("cannot get compare {lhs} to {rhs}"), *line)),
+            },
+            (lhs, rhs) => Err(RuntimeError::new(format!("comparison not supported between {lhs} and {rhs}"), lhs.line())),
+        }
+    }
+
+    // Need to implement cmp like this because `std::cmd::Eq` does not support returning a `Result`.
+    pub fn eq(&self, rhs: &Self) -> Result<bool, RuntimeError> {
+        match (self, rhs) {
+            (Type::Bool { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.eq(rhs)),
+            (Type::Number { value: lhs, .. }, Type::Number { value: rhs, .. }) => Ok(lhs.eq(rhs)),
+            (Type::String { value: lhs, .. }, Type::String { value: rhs, .. }) => Ok(lhs.eq(rhs)),
+            (Type::Bool { value: lhs, .. }, Type::Number { value: rhs, .. }) => Ok((*lhs as u8 as f64).eq(rhs)),
+            (Type::Number { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.eq(&(*rhs as u8 as f64))),
+            (lhs, rhs) => Err(RuntimeError::new(format!("equality not supported between {rhs} and {lhs}"), lhs.line())),
+        }
+    }
 }
 
 impl std::fmt::Display for Type {
@@ -41,7 +77,7 @@ impl std::fmt::Display for Type {
         match self {
             Type::Number { value, .. } => write!(f, "{value}"),
             Type::Bool { value, .. } => write!(f, "{value}"),
-            Type::String { value, .. } => write!(f, "{value}"),
+            Type::String { value, .. } => write!(f, "'{value}'"),
         }
     }
 }
@@ -152,6 +188,30 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
                 TokenKind::Slash => lhs / rhs,
                 TokenKind::Caret => lhs.pow(rhs),
                 TokenKind::Mod => lhs % rhs,
+                TokenKind::Greater => Ok(Type::Bool {
+                    value: lhs.cmp(&rhs)?.is_gt(),
+                    line: lhs.line(),
+                }),
+                TokenKind::GreaterEqual => Ok(Type::Bool {
+                    value: lhs.cmp(&rhs)?.is_ge(),
+                    line: lhs.line(),
+                }),
+                TokenKind::Less => Ok(Type::Bool {
+                    value: lhs.cmp(&rhs)?.is_lt(),
+                    line: lhs.line(),
+                }),
+                TokenKind::LessEqual => Ok(Type::Bool {
+                    value: lhs.cmp(&rhs)?.is_le(),
+                    line: lhs.line(),
+                }),
+                TokenKind::EqualEqual => Ok(Type::Bool {
+                    value: lhs.eq(&rhs)?,
+                    line: lhs.line(),
+                }),
+                TokenKind::NotEqual => Ok(Type::Bool {
+                    value: !lhs.eq(&rhs)?,
+                    line: lhs.line(),
+                }),
                 _ => panic!("unsupported binary operation {binop:?}"),
             }
         }

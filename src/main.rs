@@ -50,7 +50,13 @@ fn main() {
     };
     println!("{ast:?}");
 
-    let val = interpreter::interpret(&ast);
+    let val = match interpreter::interpret(&ast) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("{e}");
+            return;
+        }
+    };
 
     println!("{val:?}");
 }
