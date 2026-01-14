@@ -1,3 +1,5 @@
+use std::string::FromUtf8Error;
+
 use colored::Colorize;
 
 #[derive(Debug, thiserror::Error)]
@@ -19,10 +21,33 @@ impl ParseError {
 }
 
 #[derive(Debug, thiserror::Error)]
+pub struct TokenizationError {
+    message: String,
+    line: usize,
+}
+
+impl std::fmt::Display for TokenizationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{} line {}: {}", "error:".red().bold(), self.line, self.message)
+    }
+}
+
+impl TokenizationError {
+    pub fn new(message: String, line: usize) -> Self {
+        Self { message, line }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum CompileError {
     #[error("Parse Error")]
     Parse {
         #[from]
         source: ParseError,
+    },
+    #[error("Lex Error")]
+    Lex {
+        #[from]
+        source: TokenizationError,
     },
 }

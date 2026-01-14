@@ -1,4 +1,7 @@
-use crate::tokens::{Lexeme, Token, TokenKind};
+use crate::{
+    errors::TokenizationError,
+    tokens::{Lexeme, Token, TokenKind},
+};
 
 pub struct Lexer<'src> {
     source: &'src [u8],
@@ -19,11 +22,11 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    pub fn tokenize(&mut self) -> &Vec<Token<'_>> {
+    pub fn tokenize(&mut self) -> Result<&Vec<Token<'_>>, TokenizationError> {
         while self.curr < self.source.len() {
             self.start = self.curr;
             let Some(c) = self.advance() else {
-                return &self.tokens;
+                return Ok(&self.tokens);
             };
             match c {
                 b'\n' => self.line += 1,
@@ -91,21 +94,22 @@ impl<'src> Lexer<'src> {
                         self.tokens.push(Token::new(TokenKind::Colon, self.line));
                     }
                 }
-                b'0'..=b'9' => self.handle_number_literal(),
-                b'\'' => self.handle_string_literal(b'\''),
-                b'"' => self.handle_string_literal(b'"'),
-                b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.handle_identifier(),
+                b'0'..=b'9' => self.handle_number_literal()?,
+                b'\'' => self.handle_string_literal(b'\'')?,
+                b'"' => self.handle_string_literal(b'"')?,
+                b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.handle_identifier()?,
                 _ => panic!("[Line {}] Unexpected character: '{}'", self.line, c as char),
             }
         }
 
-        &self.tokens
+        Ok(&self.tokens)
     }
 
-    fn handle_identifier(&mut self) {
+    fn handle_identifier(&mut self) -> Result<(), TokenizationError> {
         while self.peek().is_some_and(|c| c.is_ascii_alphanumeric() || c == b'_') {
             self.advance();
         }
+
         if let Some(keyword) = match_reserved_keyword(&self.source[self.start..self.curr], self.line) {
             self.tokens.push(keyword);
         } else {
@@ -116,12 +120,14 @@ impl<'src> Lexer<'src> {
                 self.line,
             ));
         }
+        Ok(())
     }
 
-    fn handle_number_literal(&mut self) {
+    fn handle_number_literal(&mut self) -> Result<(), TokenizationError> {
         while self.peek().is_some_and(|c| c.is_ascii_digit()) {
             self.advance();
         }
+
         if self.peek().is_some_and(|c| c == b'.') && self.lookahead(1).is_some_and(|x| x.is_ascii_digit()) {
             self.advance();
             while self.peek().is_some_and(|c| c.is_ascii_digit()) {
@@ -141,14 +147,15 @@ impl<'src> Lexer<'src> {
                 self.line,
             ));
         }
+        Ok(())
     }
 
-    fn handle_string_literal(&mut self, quote: u8) {
+    fn handle_string_literal(&mut self, quote: u8) -> Result<(), TokenizationError> {
         while self.peek().is_some_and(|c| c != quote && c != b'\n') {
             self.advance();
         }
         if self.curr >= self.source.len() || self.peek().is_some_and(|c| c == b'\n') {
-            panic!("[Line {}] Unterminated string literal", self.line);
+            return Err(TokenizationError::new("unterminated string literal".into(), self.line));
         }
         self.advance();
         self.tokens.push(Token::new(
@@ -157,6 +164,7 @@ impl<'src> Lexer<'src> {
             },
             self.line,
         ));
+        Ok(())
     }
 
     pub fn advance(&mut self) -> Option<u8> {

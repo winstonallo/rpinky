@@ -22,7 +22,13 @@ fn main() {
     };
 
     let mut lexer = Lexer::new(source.as_bytes());
-    let tokens = lexer.tokenize();
+    let tokens = match lexer.tokenize() {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("{e}");
+            return;
+        }
+    };
 
     for tok in tokens {
         println!("{tok:?}")
