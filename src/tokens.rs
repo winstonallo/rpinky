@@ -29,57 +29,77 @@ impl std::fmt::Debug for Lexeme<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Token<'src> {
+    kind: TokenKind<'src>,
+    line: usize,
+}
+
+impl<'src> Token<'src> {
+    pub fn new(kind: TokenKind<'src>, line: usize) -> Self {
+        Self { kind, line }
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+
+    pub fn kind(&self) -> TokenKind<'src> {
+        self.kind
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Token<'src> {
-    LParen { line: usize },    // (
-    RParen { line: usize },    // )
-    LCurly { line: usize },    // {
-    RCurly { line: usize },    // }
-    LSquare { line: usize },   // ]
-    RSquare { line: usize },   // [
-    Comma { line: usize },     // ,
-    Dot { line: usize },       // .
-    Plus { line: usize },      // +
-    Minus { line: usize },     // -
-    Star { line: usize },      // *
-    Slash { line: usize },     // /
-    Caret { line: usize },     // ^
-    Mod { line: usize },       // %
-    Colon { line: usize },     // :
-    Semicolon { line: usize }, // ;
-    Question { line: usize },  // ?
-    Not { line: usize },       // ~
-    Greater { line: usize },   // >
-    Less { line: usize },      // <
-    Equal { line: usize },     // =
+pub enum TokenKind<'src> {
+    LParen,    // (
+    RParen,    // )
+    LCurly,    // {
+    RCurly,    // }
+    LSquare,   // ]
+    RSquare,   // [
+    Comma,     // ,
+    Dot,       // .
+    Plus,      // +
+    Minus,     // -
+    Star,      // *
+    Slash,     // /
+    Caret,     // ^
+    Mod,       // %
+    Colon,     // :
+    Semicolon, // ;
+    Question,  // ?
+    Not,       // ~
+    Greater,   // >
+    Less,      // <
+    Equal,     // =
     // Two-char tokens
-    GreaterEqual { line: usize },   // >=
-    LessEqual { line: usize },      // <=
-    NotEqual { line: usize },       // ~=
-    EqualEqual { line: usize },     // ==
-    Assign { line: usize },         // :=
-    GreaterGreater { line: usize }, // >>
-    LessLess { line: usize },       // <<
+    GreaterEqual,   // >=
+    LessEqual,      // <=
+    NotEqual,       // ~=
+    EqualEqual,     // ==
+    Assign,         // :=
+    GreaterGreater, // >>
+    LessLess,       // <<
     // Literals
-    Identifier { lexeme: Lexeme<'src>, line: usize },
-    StringLiteral { lexeme: Lexeme<'src>, line: usize },
-    IntegerLiteral { lexeme: Lexeme<'src>, line: usize },
-    FloatLiteral { lexeme: Lexeme<'src>, line: usize },
+    Identifier { lexeme: Lexeme<'src> },
+    StringLiteral { lexeme: Lexeme<'src> },
+    IntegerLiteral { lexeme: Lexeme<'src> },
+    FloatLiteral { lexeme: Lexeme<'src> },
     // Keywords
-    If { line: usize },
-    Then { line: usize },
-    Else { line: usize },
-    True { line: usize },
-    False { line: usize },
-    And { line: usize },
-    Or { line: usize },
-    While { line: usize },
-    Do { line: usize },
-    For { line: usize },
-    Func { line: usize },
-    Null { line: usize },
-    End { line: usize },
-    Print { line: usize },
-    Println { line: usize },
-    Ret { line: usize },
+    If,
+    Then,
+    Else,
+    True,
+    False,
+    And,
+    Or,
+    While,
+    Do,
+    For,
+    Func,
+    Null,
+    End,
+    Print,
+    Println,
+    Ret,
 }

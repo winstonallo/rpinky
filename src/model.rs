@@ -1,4 +1,7 @@
-use crate::tokens::Token;
+use crate::{
+    errors::ParseError,
+    tokens::{Token, TokenKind},
+};
 
 /// Evaluates to a result
 #[derive(Clone)]
@@ -52,18 +55,18 @@ pub struct Integer {
 }
 
 impl TryFrom<&Token<'_>> for Integer {
-    type Error = String;
+    type Error = ParseError;
 
-    fn try_from(value: &Token<'_>) -> Result<Self, Self::Error> {
-        let Token::IntegerLiteral { lexeme, line } = value else {
-            return Err(format!("Expected Token::IntegerLiteral, got {value:?}"));
+    fn try_from(token: &Token<'_>) -> Result<Self, Self::Error> {
+        let TokenKind::IntegerLiteral { lexeme } = token.kind() else {
+            return Err(ParseError::new(format!("expected integer literal, got {token:?}"), token.line()));
         };
         Ok(Self {
             value: std::str::from_utf8(lexeme.value())
-                .map_err(|e| format!("Invalid UTF-8 string: {e}"))?
+                .map_err(|e| ParseError::new(format!("Invalid UTF-8: {e}"), token.line()))?
                 .parse()
-                .map_err(|e| format!("Could not parse as isize: {e}"))?,
-            line: *line,
+                .map_err(|e| ParseError::new(format!("Could not parse as isize: {e}"), token.line()))?,
+            line: token.line(),
         })
     }
 }
@@ -75,18 +78,18 @@ pub struct Float {
 }
 
 impl TryFrom<&Token<'_>> for Float {
-    type Error = String;
+    type Error = ParseError;
 
-    fn try_from(value: &Token<'_>) -> Result<Self, Self::Error> {
-        let Token::FloatLiteral { lexeme, line } = value else {
-            return Err(format!("Expected Token::FloatLiteral, got {value:?}"));
+    fn try_from(token: &Token<'_>) -> Result<Self, Self::Error> {
+        let TokenKind::FloatLiteral { lexeme } = token.kind() else {
+            return Err(ParseError::new(format!("expected float literal, got {token:?}"), token.line()));
         };
         Ok(Self {
             value: std::str::from_utf8(lexeme.value())
-                .map_err(|e| format!("Invalid UTF-8 string: {e}"))?
+                .map_err(|e| ParseError::new(format!("Invalid UTF-8 string: {e}"), token.line()))?
                 .parse()
-                .map_err(|e| format!("Could not parse as isize: {e}"))?,
-            line: *line,
+                .map_err(|e| ParseError::new(format!("Could not parse as isize: {e}"), token.line()))?,
+            line: token.line(),
         })
     }
 }

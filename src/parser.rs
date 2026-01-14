@@ -1,6 +1,7 @@
 use crate::{
+    errors::ParseError,
     model::{BinOp, Expr, Float, Integer, UnOp},
-    tokens::Token,
+    tokens::{Token, TokenKind},
 };
 
 pub struct Parser<'src> {
@@ -58,73 +59,67 @@ impl<'src> Parser<'src> {
     }
 
     /// `<primary> ::= <integer> | <float> | '(' <expr> ')'`
-    fn primary(&mut self) -> Expr<'src> {
+    fn primary(&mut self) -> Result<Expr<'src>, ParseError> {
         let token = self.peek();
-        match token {
-            Token::IntegerLiteral { .. } => {
+        match token.kind() {
+            TokenKind::IntegerLiteral { .. } => {
                 self.advance();
-                if let Ok(int) = Integer::try_from(&token) {
-                    return Expr::Integer(int);
-                }
-                panic!("brint");
+                Ok(Expr::Integer(Integer::try_from(&token)?))
             }
-            Token::FloatLiteral { .. } => {
+            TokenKind::FloatLiteral { .. } => {
                 self.advance();
-                if let Ok(float) = Float::try_from(&token) {
-                    return Expr::Float(float);
-                }
-                panic!("broat");
+                Ok(Expr::Float(Float::try_from(&token)?))
             }
-            Token::LParen { .. } => {
+            TokenKind::LParen { .. } => {
                 self.advance();
-                let expr = self.expr();
-                if !self.match_curr(|tok| matches!(tok, Token::RParen { .. })) {
-                    panic!("Expected ')'");
+                let expr = self.expr()?;
+                if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen { .. })) {
+                    return Err(ParseError::new("expected closing ')'".into(), token.line()));
                 }
-                Expr::Grouping(Box::new(expr))
+                Ok(Expr::Grouping(Box::new(expr)))
             }
             _ => panic!("bruh"),
         }
     }
 
     /// `<unary> ::= ( '+' | '-' | '~' ) <unary> | <primary>`
-    fn unary(&mut self) -> Expr<'src> {
-        if self.match_curr(|tok| matches!(tok, Token::Not { .. } | Token::Minus { .. } | Token::Plus { .. })) {
+    fn unary(&mut self) -> Result<Expr<'src>, ParseError> {
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. } | TokenKind::Plus { .. })) {
             let operator = self.previous_token();
-            let operand = self.unary();
-            return Expr::UnOp(UnOp::new(operator, operand));
+            let operand = self.unary()?;
+            return Ok(Expr::UnOp(UnOp::new(operator, operand)));
         }
         self.primary()
     }
 
     /// `<factor> ::= <unary>`
-    fn factor(&mut self) -> Expr<'src> {
+    fn factor(&mut self) -> Result<Expr<'src>, ParseError> {
         self.unary()
     }
 
     /// `<term> ::= <factor> ( ( '*' | '/' ) <factor> )*`
-    fn term(&mut self) -> Expr<'src> {
-        let mut expr = self.factor();
-        while self.match_curr(|tok| matches!(tok, Token::Star { .. } | Token::Slash { .. })) {
+    fn term(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.factor()?;
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star { .. } | TokenKind::Slash { .. })) {
             let operator = self.previous_token();
-            let right = self.factor();
+            let right = self.factor()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
         }
-        expr
+        Ok(expr)
     }
 
     /// `<expr> ::= <term> ( ( '+' | '-' ) <term> )*`
-    fn expr(&mut self) -> Expr<'src> {
-        let mut expr = self.term();
-        while self.match_curr(|tok| matches!(tok, Token::Plus { .. } | Token::Minus { .. })) {
+    fn expr(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.term()?;
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus { .. } | TokenKind::Minus { .. })) {
             let operator = self.previous_token();
-            let right = self.term();
+            let right = self.term()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
         }
-        expr
+        Ok(expr)
     }
 
-    pub fn parse(&mut self) -> Expr<'src> {
+    pub fn parse(&mut self) -> Result<Expr<'src>, ParseError> {
         self.expr()
     }
 }
