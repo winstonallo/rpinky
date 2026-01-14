@@ -11,6 +11,8 @@ pub enum Expr<'src> {
     Grouping(Box<Expr<'src>>),
     UnOp(UnOp<'src>),
     BinOp(BinOp<'src>),
+    String(StringType),
+    Bool(Bool),
 }
 
 fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
@@ -18,6 +20,8 @@ fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usi
     match ast {
         Expr::Integer(int) => writeln!(f, "{}{int:?}", " ".repeat(indentation)),
         Expr::Float(float) => writeln!(f, "{}{float:?}", " ".repeat(indentation)),
+        Expr::Bool(bool) => writeln!(f, "{}{bool:?}", " ".repeat(indentation)),
+        Expr::String(str) => writeln!(f, "{}{str:?}", " ".repeat(indentation)),
         Expr::Grouping(group) => {
             writeln!(f, "{}Grouping (", " ".repeat(indentation))?;
             dump_ast(group, f, Some(indentation + 4))?;
@@ -50,7 +54,7 @@ pub trait Stmt {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Integer {
-    value: isize,
+    value: f64,
     line: usize,
 }
 
@@ -68,6 +72,16 @@ impl TryFrom<&Token<'_>> for Integer {
                 .map_err(|e| ParseError::new(format!("Could not parse as isize: {e}"), token.line()))?,
             line: token.line(),
         })
+    }
+}
+
+impl Integer {
+    pub fn value(&self) -> f64 {
+        self.value
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
 
@@ -94,6 +108,69 @@ impl TryFrom<&Token<'_>> for Float {
     }
 }
 
+impl Float {
+    pub fn value(&self) -> f64 {
+        self.value
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Bool {
+    value: bool,
+    line: usize,
+}
+
+impl<'src> TryFrom<&Token<'src>> for Bool {
+    type Error = ParseError;
+
+    fn try_from(token: &Token<'src>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            value: match token.kind() {
+                TokenKind::True => true,
+                TokenKind::False => false,
+                _ => return Err(ParseError::new(format!("expected bool literal, got {token:?}"), token.line())),
+            },
+            line: token.line(),
+        })
+    }
+}
+
+impl Bool {
+    pub fn new(value: bool, line: usize) -> Self {
+        Self { value, line }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StringType {
+    value: String,
+    line: usize,
+}
+
+impl<'src> TryFrom<&Token<'src>> for StringType {
+    type Error = ParseError;
+
+    fn try_from(token: &Token<'src>) -> Result<Self, Self::Error> {
+        let TokenKind::StringLiteral { lexeme } = token.kind() else {
+            return Err(ParseError::new(format!("expected string literal, got {token:?}"), token.line()));
+        };
+        Ok(Self {
+            value: String::from_utf8(lexeme.value().to_vec()).map_err(|e| ParseError::new(format!("Invalid UTF-8 string: {e}"), token.line()))?,
+            line: token.line(),
+        })
+    }
+}
+
+impl StringType {
+    pub fn new(value: String, line: usize) -> Self {
+        Self { value, line }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BinOp<'src> {
     operator: Token<'src>,
@@ -111,10 +188,34 @@ impl<'src> BinOp<'src> {
     }
 }
 
+impl<'src> BinOp<'src> {
+    pub fn operator(&self) -> Token<'src> {
+        self.operator
+    }
+
+    pub fn lhs(&self) -> &Expr<'src> {
+        &self.lhs
+    }
+
+    pub fn rhs(&self) -> &Expr<'src> {
+        &self.rhs
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UnOp<'src> {
     operator: Token<'src>,
     operand: Box<Expr<'src>>,
+}
+
+impl<'src> UnOp<'src> {
+    pub fn operator(&self) -> Token<'src> {
+        self.operator
+    }
+
+    pub fn operand(&self) -> &Expr<'src> {
+        &self.operand
+    }
 }
 
 impl<'src> UnOp<'src> {

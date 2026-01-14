@@ -1,10 +1,11 @@
 use clap::Parser as _;
 use colored::Colorize;
 
-use crate::{lexer::Lexer, parser::Parser};
+use crate::{interpreter::Interpreter, lexer::Lexer, parser::Parser};
 
 mod cli;
 mod errors;
+mod interpreter;
 mod lexer;
 mod model;
 mod parser;
@@ -46,4 +47,10 @@ fn main() {
         }
     };
     println!("{ast:?}");
+
+    let mut interpreter = Interpreter::new();
+
+    let val = interpreter.interpret(&ast);
+
+    println!("{val}");
 }

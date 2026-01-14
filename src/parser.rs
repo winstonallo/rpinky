@@ -1,6 +1,6 @@
 use crate::{
     errors::ParseError,
-    model::{BinOp, Expr, Float, Integer, UnOp},
+    model::{BinOp, Bool, Expr, Float, Integer, StringType, UnOp},
     tokens::{Token, TokenKind},
 };
 
@@ -58,10 +58,22 @@ impl<'src> Parser<'src> {
         self.tokens[self.curr - 1]
     }
 
-    /// `<primary> ::= <integer> | <float> | '(' <expr> ')'`
+    /// `<primary> ::= <integer>
+    ///              | <float>
+    ///              | <bool>
+    ///              | <string>
+    ///              | '(' <expr> ')'`
     fn primary(&mut self) -> Result<Expr<'src>, ParseError> {
         let token = self.peek();
         match token.kind() {
+            TokenKind::StringLiteral { .. } => {
+                self.advance();
+                Ok(Expr::String(StringType::try_from(&token)?))
+            }
+            TokenKind::True | TokenKind::False => {
+                self.advance();
+                Ok(Expr::Bool(Bool::try_from(&token)?))
+            }
             TokenKind::IntegerLiteral { .. } => {
                 self.advance();
                 Ok(Expr::Integer(Integer::try_from(&token)?))
