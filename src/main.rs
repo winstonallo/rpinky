@@ -3,7 +3,7 @@
 use clap::Parser as _;
 use colored::Colorize;
 
-use crate::{interpreter::Interpreter, lexer::Lexer, parser::Parser};
+use crate::{lexer::Lexer, parser::Parser};
 
 mod cli;
 mod errors;
@@ -50,9 +50,7 @@ fn main() {
     };
     println!("{ast:?}");
 
-    let mut interpreter = Interpreter::new();
-
-    let val = interpreter.interpret(&ast);
+    let val = interpreter::interpret(&ast);
 
     println!("{val:?}");
 }

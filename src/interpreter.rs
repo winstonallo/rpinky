@@ -122,55 +122,47 @@ impl std::ops::Not for Type {
     }
 }
 
-pub struct Interpreter {}
-
-impl Interpreter {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn interpret<'src>(&mut self, ast: &Expr<'src>) -> Result<Type, RuntimeError> {
-        match ast {
-            Expr::Integer(i) => Ok(Type::Number {
-                value: i.value(),
-                line: i.line(),
-            }),
-            Expr::Float(f) => Ok(Type::Number {
-                value: f.value(),
-                line: f.line(),
-            }),
-            Expr::String(s) => Ok(Type::String {
-                value: s.value().into(),
-                line: s.line(),
-            }),
-            Expr::Bool(b) => Ok(Type::Bool {
-                value: b.value(),
-                line: b.line(),
-            }),
-            Expr::Grouping(expr) => self.interpret(expr),
-            Expr::BinOp(binop) => {
-                let lhs = self.interpret(binop.lhs())?;
-                let rhs = self.interpret(binop.rhs())?;
-                match binop.operator().kind() {
-                    TokenKind::Plus => lhs + rhs,
-                    TokenKind::Minus => lhs - rhs,
-                    TokenKind::Star => lhs * rhs,
-                    TokenKind::Slash => lhs / rhs,
-                    TokenKind::Caret => lhs.pow(rhs),
-                    _ => panic!("unsupported binary operation {binop:?}"),
-                }
+pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
+    match ast {
+        Expr::Integer(i) => Ok(Type::Number {
+            value: i.value(),
+            line: i.line(),
+        }),
+        Expr::Float(f) => Ok(Type::Number {
+            value: f.value(),
+            line: f.line(),
+        }),
+        Expr::String(s) => Ok(Type::String {
+            value: s.value().into(),
+            line: s.line(),
+        }),
+        Expr::Bool(b) => Ok(Type::Bool {
+            value: b.value(),
+            line: b.line(),
+        }),
+        Expr::Grouping(expr) => interpret(expr),
+        Expr::BinOp(binop) => {
+            let lhs = interpret(binop.lhs())?;
+            let rhs = interpret(binop.rhs())?;
+            match binop.operator().kind() {
+                TokenKind::Plus => lhs + rhs,
+                TokenKind::Minus => lhs - rhs,
+                TokenKind::Star => lhs * rhs,
+                TokenKind::Slash => lhs / rhs,
+                TokenKind::Caret => lhs.pow(rhs),
+                _ => panic!("unsupported binary operation {binop:?}"),
             }
-            Expr::UnOp(unop) => {
-                let operand = self.interpret(unop.operand())?;
-                match unop.operator().kind() {
-                    TokenKind::Plus => match operand {
-                        Type::String { value, line } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
-                        _ => Ok(operand),
-                    },
-                    TokenKind::Minus => -operand,
-                    TokenKind::Not => Ok(!operand),
-                    _ => panic!("unsupported unary operation {unop:?}"),
-                }
+        }
+        Expr::UnOp(unop) => {
+            let operand = interpret(unop.operand())?;
+            match unop.operator().kind() {
+                TokenKind::Plus => match operand {
+                    Type::String { value, line } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
+                    _ => Ok(operand),
+                },
+                TokenKind::Minus => -operand,
+                TokenKind::Not => Ok(!operand),
+                _ => panic!("unsupported unary operation {unop:?}"),
             }
         }
     }
