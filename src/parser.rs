@@ -117,13 +117,24 @@ impl<'src> Parser<'src> {
         self.exponent()
     }
 
-    /// `<multiplication> ::= <unary> ( ( '*' | '/' ) <unary> )*`
+    /// `<modulo> ::= <unary > ( ( '%' ) <modulo> )*`
+    fn modulo(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.unary()?;
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Mod { .. })) {
+            let operator = self.previous_token();
+            let right = self.modulo()?;
+            expr = Expr::BinOp(BinOp::new(operator, expr, right));
+        }
+        Ok(expr)
+    }
+
+    /// `<multiplication> ::= <modulo> ( ( '*' | '/' ) <modulo> )*`
     // aka `term`
     fn multiplication(&mut self) -> Result<Expr<'src>, ParseError> {
-        let mut expr = self.unary()?;
+        let mut expr = self.modulo()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star { .. } | TokenKind::Slash { .. })) {
             let operator = self.previous_token();
-            let right = self.unary()?;
+            let right = self.modulo()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
         }
         Ok(expr)

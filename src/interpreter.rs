@@ -97,6 +97,7 @@ macro_rules! impl_numeric_op {
 impl_numeric_op!(Sub, sub, -, "subtraction", Type);
 impl_numeric_op!(Mul, mul, *, "multiplication", Type);
 impl_numeric_op!(Div, div, /, "division", Type);
+impl_numeric_op!(Rem, rem, %, "modulo", Type);
 
 impl std::ops::Neg for Type {
     type Output = Result<Self, RuntimeError>;
@@ -150,6 +151,7 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
                 TokenKind::Star => lhs * rhs,
                 TokenKind::Slash => lhs / rhs,
                 TokenKind::Caret => lhs.pow(rhs),
+                TokenKind::Mod => lhs % rhs,
                 _ => panic!("unsupported binary operation {binop:?}"),
             }
         }
