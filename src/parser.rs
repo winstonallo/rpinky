@@ -93,6 +93,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<multiplication> ::= <unary> ( ( '*' | '/' ) <unary> )*`
+    // aka `term`
     fn multiplication(&mut self) -> Result<Expr<'src>, ParseError> {
         let mut expr = self.unary()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star { .. } | TokenKind::Slash { .. })) {
@@ -104,6 +105,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<addition> ::= <multiplication> ( ( '+' | '-' ) <multiplication> )*`
+    // aka `expr`
     fn addition(&mut self) -> Result<Expr<'src>, ParseError> {
         let mut expr = self.multiplication()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus { .. } | TokenKind::Minus { .. })) {
