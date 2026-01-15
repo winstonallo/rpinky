@@ -94,13 +94,13 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// `<exponent> ::= <unary> ( '^' <power> )?`
+    /// `<exponent> ::= <primary> ( '^' <exponent> )?`
     fn exponent(&mut self) -> Result<Expr<'src>, ParseError> {
         let base = self.primary()?;
 
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Caret { .. })) {
             let operator = self.previous_token();
-            let exponent = self.unary()?;
+            let exponent = self.unary()?; // have to go back up here to solve expressions like 2 ^ -3
             return Ok(Expr::BinOp(BinOp::new(operator, base, exponent)));
         }
 

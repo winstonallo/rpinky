@@ -42,18 +42,18 @@ impl Type {
             (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => match lhs.partial_cmp(rhs) {
                 Some(ordering) => Ok(ordering),
                 // one of the values is NaN
-                None => Err(RuntimeError::new(format!("cannot get compare {lhs} to {rhs}"), *line)),
+                None => Err(RuntimeError::new(format!("comparison not supported between {lhs} and {rhs}"), *line)),
             },
             (Type::String { value: lhs, .. }, Type::String { value: rhs, .. }) => Ok(lhs.cmp(rhs)),
             (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => match (*lhs as u8 as f64).partial_cmp(rhs) {
                 Some(ordering) => Ok(ordering),
                 // rhs is NaN
-                None => Err(RuntimeError::new(format!("cannot get compare {lhs} to {rhs}"), *line)),
+                None => Err(RuntimeError::new(format!("comparison not supported between {lhs} and {rhs}"), *line)),
             },
             (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => match lhs.partial_cmp(&(*rhs as u8 as f64)) {
                 Some(ordering) => Ok(ordering),
                 // lhs is NaN
-                None => Err(RuntimeError::new(format!("cannot get compare {lhs} to {rhs}"), *line)),
+                None => Err(RuntimeError::new(format!("comparison not supported between {lhs} and {rhs}"), *line)),
             },
             (lhs, rhs) => Err(RuntimeError::new(format!("comparison not supported between {lhs} and {rhs}"), lhs.line())),
         }
