@@ -94,7 +94,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    /// `<exponent> ::= <primary> ( '^' <exponent> )?`
+    /// `<exponent> ::= <primary> ( '^' <primary> )*`
     fn exponent(&mut self) -> Result<Expr<'src>, ParseError> {
         let base = self.primary()?;
 
@@ -107,7 +107,7 @@ impl<'src> Parser<'src> {
         Ok(base)
     }
 
-    /// `<unary> ::= ( '+' | '-' | '~' ) <unary> | <exponent>`
+    /// `<unary> ::= ( '-' | '~' )* <exponent>`
     fn unary(&mut self) -> Result<Expr<'src>, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. })) {
             let operator = self.previous_token();
@@ -117,7 +117,7 @@ impl<'src> Parser<'src> {
         self.exponent()
     }
 
-    /// `<modulo> ::= <unary > ( ( '%' ) <modulo> )*`
+    /// `<modulo> ::= <unary> ( ( '%' ) <unary> )*`
     fn modulo(&mut self) -> Result<Expr<'src>, ParseError> {
         let mut expr = self.unary()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Mod { .. })) {
