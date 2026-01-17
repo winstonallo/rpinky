@@ -86,7 +86,7 @@ impl<'src> Parser<'src> {
             }
             TokenKind::LParen { .. } => {
                 self.advance();
-                let expr = self.addition()?;
+                let expr = self.expr()?;
                 if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen { .. })) {
                     return Err(ParseError::new("expected closing ')'".into(), token.line()));
                 }
