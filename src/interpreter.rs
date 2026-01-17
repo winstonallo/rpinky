@@ -189,8 +189,54 @@ macro_rules! impl_numeric_op {
 
 impl_numeric_op!(Sub, sub, -, "subtraction", Type);
 impl_numeric_op!(Mul, mul, *, "multiplication", Type);
-impl_numeric_op!(Div, div, /, "division", Type);
-impl_numeric_op!(Rem, rem, %, "modulo", Type);
+
+impl ::std::ops::Div for Type {
+    type Output = Result<Self, RuntimeError>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let rhs = match rhs {
+            Self::Number { value, .. } => value,
+            Self::Bool { value, .. } => value as u8 as f64,
+            Self::String { line, .. } => return Err(RuntimeError::new("division is not implemented for string".into(), line)),
+        };
+        if rhs == 0f64 {
+            return Err(RuntimeError::new("division by zero".into(), self.line()));
+        }
+        let lhs = match self {
+            Self::Number { value, .. } => value,
+            Self::Bool { value, .. } => value as u8 as f64,
+            Self::String { line, .. } => return Err(RuntimeError::new("division is not implemented for string".into(), line)),
+        };
+        Ok(Type::Number {
+            value: lhs / rhs,
+            line: self.line(),
+        })
+    }
+}
+
+impl ::std::ops::Rem for Type {
+    type Output = Result<Self, RuntimeError>;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        let rhs = match rhs {
+            Self::Number { value, .. } => value,
+            Self::Bool { value, .. } => value as u8 as f64,
+            Self::String { line, .. } => return Err(RuntimeError::new("modulo is not implemented for string".into(), line)),
+        };
+        if rhs == 0f64 {
+            return Err(RuntimeError::new("modulo by zero".into(), self.line()));
+        }
+        let lhs = match self {
+            Self::Number { value, .. } => value,
+            Self::Bool { value, .. } => value as u8 as f64,
+            Self::String { line, .. } => return Err(RuntimeError::new("modulo is not implemented for string".into(), line)),
+        };
+        Ok(Type::Number {
+            value: lhs % rhs,
+            line: self.line(),
+        })
+    }
+}
 
 impl std::ops::Neg for Type {
     type Output = Result<Self, RuntimeError>;
