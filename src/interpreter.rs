@@ -21,6 +21,9 @@ impl TryFrom<&Type> for f64 {
 
 impl Type {
     pub fn pow(&self, rhs: Type) -> Result<Type, RuntimeError> {
+        if matches!(self, Type::String { .. }) || matches!(rhs, Type::String { .. }) {
+            return Err(RuntimeError::new(format!("exponentiation is not implemented for string"), self.line()));
+        }
         let lhs = f64::try_from(self)?;
         let rhs = f64::try_from(&rhs)?;
         Ok(Type::Number {
