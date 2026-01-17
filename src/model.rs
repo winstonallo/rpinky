@@ -26,6 +26,7 @@ pub enum Expr {
 pub enum Stmt {
     Print(Print),
     Println(Println),
+    If(If),
 }
 
 #[derive(Debug, Clone)]
@@ -308,6 +309,7 @@ pub struct While {}
 #[derive(Clone, Debug)]
 pub struct Assignment {}
 
+/// `<print> ::= 'print' <expr>`
 #[derive(Clone, Debug)]
 pub struct Print {
     expr: Expr,
@@ -323,6 +325,7 @@ impl Print {
     }
 }
 
+/// `<println> ::= 'println' <expr>`
 #[derive(Clone, Debug)]
 pub struct Println {
     expr: Expr,
@@ -335,5 +338,31 @@ impl Println {
 
     pub fn expr(&self) -> &Expr {
         &self.expr
+    }
+}
+
+/// `'if' <expr> 'then' <stmts> ( 'else' <stmts> )? 'end' `
+#[derive(Clone, Debug)]
+pub struct If {
+    test: Expr,
+    then: Stmts,
+    r#else: Option<Stmts>,
+}
+
+impl If {
+    pub fn new(test: Expr, then: Stmts, r#else: Option<Stmts>) -> Self {
+        Self { test, then, r#else }
+    }
+
+    pub fn test(&self) -> &Expr {
+        &self.test
+    }
+
+    pub fn then(&self) -> &Stmts {
+        &self.then
+    }
+
+    pub fn r#else(&self) -> &Option<Stmts> {
+        &self.r#else
     }
 }

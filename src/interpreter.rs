@@ -355,6 +355,17 @@ pub fn interpret(stmts: &Stmts) -> Result<(), RuntimeError> {
         match stmt {
             Stmt::Print(stmt) => print!("{}", expr(stmt.expr())?),
             Stmt::Println(stmt) => println!("{}", expr(stmt.expr())?),
+            Stmt::If(stmt) => {
+                let test = expr(stmt.test())?;
+                let Type::Bool { value, .. } = test else {
+                    return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
+                };
+                if value {
+                    interpret(stmt.then())?;
+                } else if let Some(r#else) = stmt.r#else() {
+                    interpret(r#else)?;
+                }
+            }
         }
     }
     Ok(())

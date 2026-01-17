@@ -1,6 +1,6 @@
 use crate::{
     errors::ParseError,
-    model::{BinOp, Bool, Expr, Float, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
+    model::{BinOp, Bool, Expr, Float, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
     tokens::{Token, TokenKind},
 };
 
@@ -37,11 +37,14 @@ impl Parser {
     }
 
     #[allow(unused)]
-    fn expect<F: Fn(Token) -> Result<Token, String>>(&self, predicate: F) -> Result<Token, String> {
+    fn expect<F: Fn(Token) -> Result<Token, ParseError>>(&self, predicate: F) -> Result<Token, ParseError> {
         if self.curr >= self.tokens.len() {
-            return Err(format!("Found {:?} at the end of parsing", self.previous_token()));
+            return Err(ParseError::new(
+                format!("found {:?} at the end of parsing", self.previous_token()),
+                self.previous_token().line(),
+            ));
         }
-        predicate(self.peek()).clone()
+        predicate(self.peek())
     }
 
     fn match_curr<F: Fn(&Token) -> bool>(&mut self, predicate: F) -> bool {
@@ -208,7 +211,6 @@ impl Parser {
         self.or()
     }
 
-    /// `<print> ::= 'print' <expr>`
     fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)) {
             return Ok(Stmt::Print(Print::new(self.expr()?)));
@@ -216,7 +218,6 @@ impl Parser {
         Err(ParseError::new("idk bro".into(), 0))
     }
 
-    /// `<println> ::= 'println' <expr>`
     fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)) {
             return Ok(Stmt::Println(Println::new(self.expr()?)));
@@ -224,19 +225,48 @@ impl Parser {
         Err(ParseError::new("idk bro".into(), 0))
     }
 
+    fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::If)) {
+            return Err(ParseError::new("expected token 'if'".into(), self.previous_token().line()));
+        }
+
+        let test = self.expr()?;
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Then)) {
+            return Err(ParseError::new("expected token 'then'".into(), self.previous_token().line()));
+        }
+
+        let then = self.stmts()?;
+
+        let r#else = if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Else)) {
+            Some(self.stmts()?)
+        } else {
+            None
+        };
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
+            return Err(ParseError::new("expected token 'end'".into(), self.previous_token().line()));
+        }
+
+        Ok(Stmt::If(If::new(test, then, r#else)))
+    }
+
     fn stmt(&mut self) -> Result<Stmt, ParseError> {
-        // predictive parsing, where the next token predicts the next statement
+        // the next token predicts the next statement
         let token = self.peek();
+
         match token.kind() {
             TokenKind::Print => self.print_stmt(),
             TokenKind::Println => self.println_stmt(),
+            TokenKind::If => self.if_stmt(),
             _ => unimplemented!(),
         }
     }
 
     fn stmts(&mut self) -> Result<Stmts, ParseError> {
         let mut stmts = vec![];
-        while self.curr < self.tokens.len() {
+        // loop until end of block or EOF
+        while self.curr < self.tokens.len() && !matches!(self.peek().kind(), TokenKind::Else | TokenKind::End) {
             stmts.push(self.stmt()?);
         }
         Ok(Stmts::new(stmts))
