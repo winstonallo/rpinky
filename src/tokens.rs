@@ -1,42 +1,46 @@
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Lexeme<'src> {
-    value: &'src [u8],
+use crate::lexer::unescape;
+
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Lexeme {
+    value: Vec<u8>,
 }
 
-impl<'src> Lexeme<'src> {
-    pub fn new(value: &'src [u8]) -> Self {
+impl Lexeme {
+    pub fn new(value: Vec<u8>) -> Self {
+        let value = unescape(&value);
+
         Self { value }
     }
 
     pub fn value(&self) -> &[u8] {
-        self.value
+        &self.value
     }
 }
 
 // impl Display for Lexeme so the bytes are displayed as chars.
-impl std::fmt::Display for Lexeme<'_> {
+impl std::fmt::Display for Lexeme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for ch in self.value {
+        for ch in &self.value {
             write!(f, "{}", *ch as char)?;
         }
         Ok(())
     }
 }
 
-impl std::fmt::Debug for Lexeme<'_> {
+impl std::fmt::Debug for Lexeme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Token<'src> {
-    kind: TokenKind<'src>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Token {
+    kind: TokenKind,
     line: usize,
 }
 
-impl<'src> Token<'src> {
-    pub fn new(kind: TokenKind<'src>, line: usize) -> Self {
+impl Token {
+    pub fn new(kind: TokenKind, line: usize) -> Self {
         Self { kind, line }
     }
 
@@ -44,13 +48,13 @@ impl<'src> Token<'src> {
         self.line
     }
 
-    pub fn kind(&self) -> TokenKind<'src> {
-        self.kind
+    pub fn kind(&self) -> &TokenKind {
+        &self.kind
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum TokenKind<'src> {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum TokenKind {
     LParen,    // (
     RParen,    // )
     LCurly,    // {
@@ -81,10 +85,10 @@ pub enum TokenKind<'src> {
     GreaterGreater, // >>
     LessLess,       // <<
     // Literals
-    Identifier { lexeme: Lexeme<'src> },
-    StringLiteral { lexeme: Lexeme<'src> },
-    IntegerLiteral { lexeme: Lexeme<'src> },
-    FloatLiteral { lexeme: Lexeme<'src> },
+    Identifier { lexeme: Lexeme },
+    StringLiteral { lexeme: Lexeme },
+    IntegerLiteral { lexeme: Lexeme },
+    FloatLiteral { lexeme: Lexeme },
     // Keywords
     If,
     Then,
@@ -104,7 +108,7 @@ pub enum TokenKind<'src> {
     Ret,
 }
 
-impl<'src> std::fmt::Display for TokenKind<'src> {
+impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TokenKind::LParen => write!(f, "("),

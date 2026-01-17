@@ -266,7 +266,7 @@ impl std::ops::Not for Type {
 }
 
 /// Evaluate a single expression.
-pub fn expr<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
+pub fn expr(ast: &Expr) -> Result<Type, RuntimeError> {
     match ast {
         Expr::Integer(i) => Ok(Type::Number {
             value: i.value(),
@@ -350,17 +350,11 @@ pub fn expr<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
     }
 }
 
-pub fn interpret<'src>(stmts: &Stmts<'src>) -> Result<(), RuntimeError> {
+pub fn interpret(stmts: &Stmts) -> Result<(), RuntimeError> {
     for stmt in stmts.stmts() {
         match stmt {
-            Stmt::Print(print_stmt) => {
-                let expr = expr(print_stmt.expr())?;
-                print!("{expr}");
-            }
-            Stmt::Println(print_stmt) => {
-                let expr = expr(print_stmt.expr())?;
-                println!("{expr}");
-            }
+            Stmt::Print(stmt) => print!("{}", expr(stmt.expr())?),
+            Stmt::Println(stmt) => println!("{}", expr(stmt.expr())?),
         }
     }
     Ok(())

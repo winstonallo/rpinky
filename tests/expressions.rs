@@ -8,7 +8,7 @@ macro_rules! e2e {
             let exp = $exp;
             let mut lexer = cpinky::lexer::Lexer::new(src);
             let tokens = lexer.tokenize().unwrap();
-            let ast = cpinky::parser::Parser::new(tokens).expr().unwrap();
+            let ast = cpinky::parser::Parser::new(tokens.to_vec()).expr().unwrap();
             let result = cpinky::interpreter::expr(&ast).unwrap();
             assert_eq!(result, exp);
         }
@@ -23,7 +23,7 @@ macro_rules! e2e_runtime_error {
             let exp = $exp;
             let mut lexer = cpinky::lexer::Lexer::new(src);
             let tokens = lexer.tokenize().unwrap();
-            let ast = cpinky::parser::Parser::new(tokens).expr().unwrap();
+            let ast = cpinky::parser::Parser::new(tokens.to_vec()).expr().unwrap();
             let result = cpinky::interpreter::expr(&ast);
             assert_eq!(result, Err(exp));
         }

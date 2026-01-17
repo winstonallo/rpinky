@@ -8,7 +8,41 @@ pub struct Lexer<'src> {
     start: usize,
     curr: usize,
     line: usize,
-    tokens: Vec<Token<'src>>,
+    tokens: Vec<Token>,
+}
+
+pub fn unescape(bytes: &[u8]) -> Vec<u8> {
+    let mut res = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if bytes[i] != b'\\' {
+            res.push(bytes[i]);
+            i += 1;
+            continue;
+        }
+        if i >= bytes.len() - 1 {
+            res.push(b'\\');
+            break;
+        }
+
+        i += 1;
+
+        match bytes[i] {
+            b'n' => res.push(b'\n'),
+            b't' => res.push(b'\t'),
+            b'r' => res.push(b'\r'),
+            b'\\' => res.push(b'\\'),
+            _ => {
+                res.push(b'\\');
+                res.push(bytes[i]);
+            }
+        }
+
+        i += 1;
+    }
+
+    res
 }
 
 impl<'src> Lexer<'src> {
@@ -22,12 +56,13 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    pub fn tokenize(&mut self) -> Result<&Vec<Token<'_>>, TokenizationError> {
+    pub fn tokenize(&mut self) -> Result<&Vec<Token>, TokenizationError> {
         while self.curr < self.source.len() {
             self.start = self.curr;
             let Some(c) = self.advance() else {
                 return Ok(&self.tokens);
             };
+
             match c {
                 b'\n' => self.line += 1,
                 ch if ch.is_ascii_whitespace() => (),
@@ -115,7 +150,7 @@ impl<'src> Lexer<'src> {
         } else {
             self.tokens.push(Token::new(
                 TokenKind::Identifier {
-                    lexeme: Lexeme::new(&self.source[self.start..self.curr]),
+                    lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
                 },
                 self.line,
             ));
@@ -138,7 +173,7 @@ impl<'src> Lexer<'src> {
             }
             self.tokens.push(Token::new(
                 TokenKind::FloatLiteral {
-                    lexeme: Lexeme::new(&self.source[self.start..self.curr]),
+                    lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
                 },
                 self.line,
             ));
@@ -148,7 +183,7 @@ impl<'src> Lexer<'src> {
             }
             self.tokens.push(Token::new(
                 TokenKind::IntegerLiteral {
-                    lexeme: Lexeme::new(&self.source[self.start..self.curr]),
+                    lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
                 },
                 self.line,
             ));
@@ -166,7 +201,7 @@ impl<'src> Lexer<'src> {
         self.advance();
         self.tokens.push(Token::new(
             TokenKind::StringLiteral {
-                lexeme: Lexeme::new(&self.source[self.start..self.curr]),
+                lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
             },
             self.line,
         ));
@@ -208,7 +243,7 @@ impl<'src> Lexer<'src> {
     }
 }
 
-pub fn match_reserved_keyword(token: &[u8], line: usize) -> Option<Token<'_>> {
+pub fn match_reserved_keyword(token: &[u8], line: usize) -> Option<Token> {
     match token {
         b"if" => Some(Token::new(TokenKind::If, line)),
         b"else" => Some(Token::new(TokenKind::Else, line)),
@@ -248,7 +283,12 @@ mod tests {
         assert_eq!(
             *tokens,
             vec![
-                Token::new(TokenKind::IntegerLiteral { lexeme: Lexeme::new(b"2") }, 1),
+                Token::new(
+                    TokenKind::IntegerLiteral {
+                        lexeme: Lexeme::new(b"2".to_vec())
+                    },
+                    1
+                ),
                 Token::new(TokenKind::RParen, 1)
             ]
         );

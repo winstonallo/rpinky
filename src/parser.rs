@@ -4,28 +4,28 @@ use crate::{
     tokens::{Token, TokenKind},
 };
 
-pub struct Parser<'src> {
-    tokens: &'src Vec<Token<'src>>,
+pub struct Parser {
+    tokens: Vec<Token>,
     curr: usize,
 }
 
-impl<'src> Parser<'src> {
-    pub fn new(tokens: &'src Vec<Token<'src>>) -> Self {
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, curr: 0 }
     }
 
-    fn advance(&mut self) -> Option<Token<'src>> {
+    fn advance(&mut self) -> Option<&Token> {
         if self.curr >= self.tokens.len() {
             return None;
         }
-        let tok = self.tokens[self.curr];
+        let tok = &self.tokens[self.curr];
         self.curr += 1;
         Some(tok)
     }
 
-    fn peek(&self) -> Token<'src> {
+    fn peek(&self) -> Token {
         debug_assert!(self.curr < self.tokens.len());
-        self.tokens[self.curr]
+        (self.tokens[self.curr]).clone()
     }
 
     #[allow(unused)]
@@ -37,11 +37,11 @@ impl<'src> Parser<'src> {
     }
 
     #[allow(unused)]
-    fn expect<F: Fn(Token<'src>) -> Result<Token, String>>(&'src self, predicate: F) -> Result<Token<'src>, String> {
+    fn expect<F: Fn(Token) -> Result<Token, String>>(&self, predicate: F) -> Result<Token, String> {
         if self.curr >= self.tokens.len() {
             return Err(format!("Found {:?} at the end of parsing", self.previous_token()));
         }
-        predicate(self.peek())
+        predicate(self.peek()).clone()
     }
 
     fn match_curr<F: Fn(&Token) -> bool>(&mut self, predicate: F) -> bool {
@@ -55,9 +55,9 @@ impl<'src> Parser<'src> {
         true
     }
 
-    fn previous_token(&self) -> Token<'src> {
+    fn previous_token(&self) -> Token {
         debug_assert!(self.curr > 0);
-        self.tokens[self.curr - 1]
+        (self.tokens[self.curr - 1]).clone()
     }
 
     /// `<primary> ::= <integer>
@@ -65,7 +65,7 @@ impl<'src> Parser<'src> {
     ///              | <bool>
     ///              | <string>
     ///              | '(' <expr> ')'`
-    fn primary(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek();
         match token.kind() {
             TokenKind::StringLiteral { .. } => {
@@ -97,7 +97,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<exponent> ::= <primary> ( '^' <primary> )*`
-    fn exponent(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn exponent(&mut self) -> Result<Expr, ParseError> {
         let base = self.primary()?;
 
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Caret { .. })) {
@@ -110,7 +110,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<unary> ::= ( '-' | '~' )* <exponent>`
-    fn unary(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn unary(&mut self) -> Result<Expr, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. })) {
             let operator = self.previous_token();
             let operand = self.unary()?;
@@ -120,7 +120,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<modulo> ::= <unary> ( ( '%' ) <unary> )*`
-    fn modulo(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn modulo(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.unary()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Mod { .. })) {
             let operator = self.previous_token();
@@ -132,7 +132,7 @@ impl<'src> Parser<'src> {
 
     /// `<multiplication> ::= <modulo> ( ( '*' | '/' ) <modulo> )*`
     // aka `term`
-    fn multiplication(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn multiplication(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.modulo()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star { .. } | TokenKind::Slash { .. })) {
             let operator = self.previous_token();
@@ -144,7 +144,7 @@ impl<'src> Parser<'src> {
 
     /// `<addition> ::= <multiplication> ( ( '+' | '-' ) <multiplication> )*`
     // aka `expr`
-    fn addition(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn addition(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.multiplication()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus { .. } | TokenKind::Minus { .. })) {
             let operator = self.previous_token();
@@ -155,7 +155,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<comparison> := <addition> ( ( '<' | '<=' | '>' | '>=' ) <addition> )*`
-    fn comparison(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn comparison(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.addition()?;
         while self.match_curr(|tok| {
             matches!(
@@ -171,7 +171,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<equality> := <comparison> ( ( '==' | '~='  ) <comparison> )*`
-    fn equality(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn equality(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.comparison()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::EqualEqual { .. } | TokenKind::NotEqual { .. })) {
             let operator = self.previous_token();
@@ -182,7 +182,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<and> ::= <equality> ( 'and' <equality> )*`
-    fn and(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn and(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.equality()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::And)) {
             let operator = self.previous_token();
@@ -193,7 +193,7 @@ impl<'src> Parser<'src> {
     }
 
     /// `<or> ::= <and> ( 'or' <and> )*`
-    fn or(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn or(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.and()?;
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Or)) {
             let operator = self.previous_token();
@@ -204,12 +204,12 @@ impl<'src> Parser<'src> {
     }
 
     /// Evaluates an expression in the form of an AST.
-    pub fn expr(&mut self) -> Result<Expr<'src>, ParseError> {
+    pub fn expr(&mut self) -> Result<Expr, ParseError> {
         self.or()
     }
 
     /// `<print> ::= 'print' <expr>`
-    fn print_stmt(&mut self) -> Result<Stmt<'src>, ParseError> {
+    fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)) {
             return Ok(Stmt::Print(Print::new(self.expr()?)));
         }
@@ -217,14 +217,14 @@ impl<'src> Parser<'src> {
     }
 
     /// `<println> ::= 'println' <expr>`
-    fn println_stmt(&mut self) -> Result<Stmt<'src>, ParseError> {
+    fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)) {
             return Ok(Stmt::Println(Println::new(self.expr()?)));
         }
         Err(ParseError::new("idk bro".into(), 0))
     }
 
-    fn stmt(&mut self) -> Result<Stmt<'src>, ParseError> {
+    fn stmt(&mut self) -> Result<Stmt, ParseError> {
         // predictive parsing, where the next token predicts the next statement
         let token = self.peek();
         match token.kind() {
@@ -234,7 +234,7 @@ impl<'src> Parser<'src> {
         }
     }
 
-    fn stmts(&mut self) -> Result<Stmts<'src>, ParseError> {
+    fn stmts(&mut self) -> Result<Stmts, ParseError> {
         let mut stmts = vec![];
         while self.curr < self.tokens.len() {
             stmts.push(self.stmt()?);
@@ -243,11 +243,11 @@ impl<'src> Parser<'src> {
     }
 
     /// `<program> ::= <stmt>*`
-    fn program(&mut self) -> Result<Stmts<'src>, ParseError> {
+    fn program(&mut self) -> Result<Stmts, ParseError> {
         self.stmts()
     }
 
-    pub fn parse(&mut self) -> Result<Stmts<'src>, ParseError> {
+    pub fn parse(&mut self) -> Result<Stmts, ParseError> {
         self.program()
     }
 }

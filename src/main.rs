@@ -29,7 +29,7 @@ fn main() {
 
     println!();
 
-    let mut parser = Parser::new(tokens);
+    let mut parser = Parser::new(tokens.to_vec());
 
     let ast = match parser.parse() {
         Ok(a) => a,

@@ -4,41 +4,41 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub enum Node<'src> {
-    Expr(Expr<'src>),
-    Stmt(Stmt<'src>),
+pub enum Node {
+    Expr(Expr),
+    Stmts(Stmts),
 }
 
 /// Evaluates to a result
 #[derive(Clone)]
-pub enum Expr<'src> {
+pub enum Expr {
     Integer(Integer),
     Float(Float),
-    Grouping(Box<Expr<'src>>),
-    UnOp(UnOp<'src>),
-    BinOp(BinOp<'src>),
+    Grouping(Box<Expr>),
+    UnOp(UnOp),
+    BinOp(BinOp),
     String(StringType),
     Bool(Bool),
-    LogicalOp(LogicalOp<'src>),
+    LogicalOp(LogicalOp),
 }
 
 #[derive(Clone, Debug)]
-pub enum Stmt<'src> {
-    Print(Print<'src>),
-    Println(Println<'src>),
+pub enum Stmt {
+    Print(Print),
+    Println(Println),
 }
 
-#[derive(Debug)]
-pub struct Stmts<'src> {
-    stmts: Vec<Stmt<'src>>,
+#[derive(Debug, Clone)]
+pub struct Stmts {
+    stmts: Vec<Stmt>,
 }
 
-impl<'src> Stmts<'src> {
-    pub fn new(stmts: Vec<Stmt<'src>>) -> Self {
+impl Stmts {
+    pub fn new(stmts: Vec<Stmt>) -> Self {
         Self { stmts }
     }
 
-    pub fn stmts(&self) -> &Vec<Stmt<'src>> {
+    pub fn stmts(&self) -> &Vec<Stmt> {
         &self.stmts
     }
 }
@@ -78,7 +78,7 @@ fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usi
     }
 }
 
-impl<'src> std::fmt::Debug for Expr<'src> {
+impl std::fmt::Debug for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         dump_ast(self, f, None)
     }
@@ -90,10 +90,10 @@ pub struct Integer {
     line: usize,
 }
 
-impl TryFrom<&Token<'_>> for Integer {
+impl TryFrom<&Token> for Integer {
     type Error = ParseError;
 
-    fn try_from(token: &Token<'_>) -> Result<Self, Self::Error> {
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let TokenKind::IntegerLiteral { lexeme } = token.kind() else {
             return Err(ParseError::new(format!("expected integer literal, got {token:?}"), token.line()));
         };
@@ -123,10 +123,10 @@ pub struct Float {
     line: usize,
 }
 
-impl TryFrom<&Token<'_>> for Float {
+impl TryFrom<&Token> for Float {
     type Error = ParseError;
 
-    fn try_from(token: &Token<'_>) -> Result<Self, Self::Error> {
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let TokenKind::FloatLiteral { lexeme } = token.kind() else {
             return Err(ParseError::new(format!("expected float literal, got {token:?}"), token.line()));
         };
@@ -156,10 +156,10 @@ pub struct Bool {
     line: usize,
 }
 
-impl<'src> TryFrom<&Token<'src>> for Bool {
+impl TryFrom<&Token> for Bool {
     type Error = ParseError;
 
-    fn try_from(token: &Token<'src>) -> Result<Self, Self::Error> {
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
         Ok(Self {
             value: match token.kind() {
                 TokenKind::True => true,
@@ -191,10 +191,10 @@ pub struct StringType {
     line: usize,
 }
 
-impl<'src> TryFrom<&Token<'src>> for StringType {
+impl<'src> TryFrom<&Token> for StringType {
     type Error = ParseError;
 
-    fn try_from(token: &Token<'src>) -> Result<Self, Self::Error> {
+    fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let TokenKind::StringLiteral { lexeme } = token.kind() else {
             return Err(ParseError::new(format!("expected string literal, got {token:?}"), token.line()));
         };
@@ -222,14 +222,14 @@ impl StringType {
 }
 
 #[derive(Debug, Clone)]
-pub struct BinOp<'src> {
-    operator: Token<'src>,
-    lhs: Box<Expr<'src>>,
-    rhs: Box<Expr<'src>>,
+pub struct BinOp {
+    operator: Token,
+    lhs: Box<Expr>,
+    rhs: Box<Expr>,
 }
 
-impl<'src> BinOp<'src> {
-    pub fn new(operator: Token<'src>, lhs: Expr<'src>, rhs: Expr<'src>) -> Self {
+impl BinOp {
+    pub fn new(operator: Token, lhs: Expr, rhs: Expr) -> Self {
         Self {
             operator,
             lhs: Box::new(lhs),
@@ -237,51 +237,51 @@ impl<'src> BinOp<'src> {
         }
     }
 
-    pub fn operator(&self) -> Token<'src> {
-        self.operator
+    pub fn operator(&self) -> &Token {
+        &self.operator
     }
 
-    pub fn lhs(&self) -> &Expr<'src> {
+    pub fn lhs(&self) -> &Expr {
         &self.lhs
     }
 
-    pub fn rhs(&self) -> &Expr<'src> {
+    pub fn rhs(&self) -> &Expr {
         &self.rhs
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct UnOp<'src> {
-    operator: Token<'src>,
-    operand: Box<Expr<'src>>,
+pub struct UnOp {
+    operator: Token,
+    operand: Box<Expr>,
 }
 
-impl<'src> UnOp<'src> {
-    pub fn new(operator: Token<'src>, operand: Expr<'src>) -> Self {
+impl UnOp {
+    pub fn new(operator: Token, operand: Expr) -> Self {
         Self {
             operator,
             operand: Box::new(operand),
         }
     }
 
-    pub fn operator(&self) -> Token<'src> {
-        self.operator
+    pub fn operator(&self) -> &Token {
+        &self.operator
     }
 
-    pub fn operand(&self) -> &Expr<'src> {
+    pub fn operand(&self) -> &Expr {
         &self.operand
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct LogicalOp<'src> {
-    operator: Token<'src>,
-    lhs: Box<Expr<'src>>,
-    rhs: Box<Expr<'src>>,
+pub struct LogicalOp {
+    operator: Token,
+    lhs: Box<Expr>,
+    rhs: Box<Expr>,
 }
 
-impl<'src> LogicalOp<'src> {
-    pub fn new(operator: Token<'src>, lhs: Expr<'src>, rhs: Expr<'src>) -> Self {
+impl LogicalOp {
+    pub fn new(operator: Token, lhs: Expr, rhs: Expr) -> Self {
         Self {
             operator,
             lhs: Box::new(lhs),
@@ -289,15 +289,15 @@ impl<'src> LogicalOp<'src> {
         }
     }
 
-    pub fn operator(&self) -> Token<'src> {
-        self.operator
+    pub fn operator(&self) -> &Token {
+        &self.operator
     }
 
-    pub fn lhs(&self) -> &Expr<'src> {
+    pub fn lhs(&self) -> &Expr {
         &self.lhs
     }
 
-    pub fn rhs(&self) -> &Expr<'src> {
+    pub fn rhs(&self) -> &Expr {
         &self.rhs
     }
 }
@@ -309,31 +309,31 @@ pub struct While {}
 pub struct Assignment {}
 
 #[derive(Clone, Debug)]
-pub struct Print<'src> {
-    expr: Expr<'src>,
+pub struct Print {
+    expr: Expr,
 }
 
-impl<'src> Print<'src> {
-    pub fn new(expr: Expr<'src>) -> Self {
+impl Print {
+    pub fn new(expr: Expr) -> Self {
         Self { expr }
     }
 
-    pub fn expr(&self) -> &Expr<'src> {
+    pub fn expr(&self) -> &Expr {
         &self.expr
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct Println<'src> {
-    expr: Expr<'src>,
+pub struct Println {
+    expr: Expr,
 }
 
-impl<'src> Println<'src> {
-    pub fn new(expr: Expr<'src>) -> Self {
+impl Println {
+    pub fn new(expr: Expr) -> Self {
         Self { expr }
     }
 
-    pub fn expr(&self) -> &Expr<'src> {
+    pub fn expr(&self) -> &Expr {
         &self.expr
     }
 }
