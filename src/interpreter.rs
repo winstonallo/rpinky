@@ -1,6 +1,6 @@
 use crate::{errors::RuntimeError, model::Expr, tokens::TokenKind};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Type {
     Number { value: f64, line: usize },
     Bool { value: bool, line: usize },

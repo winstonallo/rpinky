@@ -6,4 +6,6 @@
  -- 2 == 3 and 5 > 4
 -- 2 > 1 or 1 = 2
 -- false or true or true and false
--- 1/0
+-- 1/1
+
+ 2 + (44 >= 2)

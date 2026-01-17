@@ -1,6 +1,6 @@
 use colored::Colorize;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub struct ParseError {
     message: String,
     line: usize,
@@ -18,7 +18,7 @@ impl ParseError {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub struct TokenizationError {
     message: String,
     line: usize,
@@ -36,7 +36,7 @@ impl TokenizationError {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub struct RuntimeError {
     message: String,
     line: usize,
@@ -54,7 +54,7 @@ impl RuntimeError {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum CompileError {
     #[error("Parse Error")]
     Parse {
