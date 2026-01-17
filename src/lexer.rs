@@ -133,6 +133,9 @@ impl<'src> Lexer<'src> {
             while self.peek().is_some_and(|c| c.is_ascii_digit()) {
                 self.advance();
             }
+            if self.peek().is_some_and(|c| c.is_ascii_alphabetic() || c == b'_') {
+                return Err(TokenizationError::new("invalid character in number literal".into(), self.line));
+            }
             self.tokens.push(Token::new(
                 TokenKind::FloatLiteral {
                     lexeme: Lexeme::new(&self.source[self.start..self.curr]),
@@ -140,6 +143,9 @@ impl<'src> Lexer<'src> {
                 self.line,
             ));
         } else {
+            if self.peek().is_some_and(|c| c.is_ascii_alphabetic() || c == b'_') {
+                return Err(TokenizationError::new("invalid character in number literal".into(), self.line));
+            }
             self.tokens.push(Token::new(
                 TokenKind::IntegerLiteral {
                     lexeme: Lexeme::new(&self.source[self.start..self.curr]),
