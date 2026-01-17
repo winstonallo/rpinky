@@ -242,9 +242,9 @@ impl std::ops::Neg for Type {
 
     fn neg(self) -> Self::Output {
         match self {
-            Type::Bool { value, line } => Ok(Type::Bool { value: !value, line }),
             Type::Number { value, line } => Ok(Type::Number { value: -value, line }),
-            Type::String { line, .. } => Err(RuntimeError::new("bad operand type for unary -: 'string'".into(), line)),
+            Type::Bool { line, .. } => Err(RuntimeError::new("bad operand type for unary -: bool".into(), line)),
+            Type::String { line, .. } => Err(RuntimeError::new("bad operand type for unary -: string".into(), line)),
         }
     }
 }

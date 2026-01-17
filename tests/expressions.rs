@@ -193,13 +193,17 @@ e2e!(
     },
     bool_concat_string
 );
-e2e!(b"-true", cpinky::interpreter::Type::Bool { value: false, line: 1 }, bool_negation);
 
 e2e_runtime_error!(b"1 / 0", cpinky::errors::RuntimeError::new("division by zero".into(), 1), division_by_zero);
 e2e_runtime_error!(b"1 % 0", cpinky::errors::RuntimeError::new("modulo by zero".into(), 1), modulo_by_zero);
 e2e_runtime_error!(
+    b"-true",
+    cpinky::errors::RuntimeError::new("bad operand type for unary -: bool".into(), 1),
+    bool_negation
+);
+e2e_runtime_error!(
     b"-''",
-    cpinky::errors::RuntimeError::new("bad operand type for unary -: 'string'".into(), 1),
+    cpinky::errors::RuntimeError::new("bad operand type for unary -: string".into(), 1),
     string_negation
 );
 e2e_runtime_error!(
