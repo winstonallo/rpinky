@@ -28,6 +28,7 @@ impl<'src> Parser<'src> {
         self.tokens[self.curr]
     }
 
+    #[allow(unused)]
     fn is_next<F: Fn(&Token) -> bool>(&self, predicate: F) -> bool {
         if self.curr >= self.tokens.len() {
             return false;
@@ -35,6 +36,7 @@ impl<'src> Parser<'src> {
         predicate(&self.tokens[self.curr + 1])
     }
 
+    #[allow(unused)]
     fn expect<F: Fn(Token<'src>) -> Result<Token, String>>(&'src self, predicate: F) -> Result<Token<'src>, String> {
         if self.curr >= self.tokens.len() {
             return Err(format!("Found {:?} at the end of parsing", self.previous_token()));

@@ -1,8 +1,4 @@
-use crate::{
-    errors::RuntimeError,
-    model::{Bool, Expr, LogicalOp},
-    tokens::TokenKind,
-};
+use crate::{errors::RuntimeError, model::Expr, tokens::TokenKind};
 
 #[derive(Debug)]
 pub enum Type {
@@ -245,7 +241,7 @@ impl std::ops::Neg for Type {
         match self {
             Type::Bool { value, line } => Ok(Type::Bool { value: !value, line }),
             Type::Number { value, line } => Ok(Type::Number { value: -value, line }),
-            Type::String { value, line } => Err(RuntimeError::new("bad operand type for unary -: 'string'".into(), line)),
+            Type::String { line, .. } => Err(RuntimeError::new("bad operand type for unary -: 'string'".into(), line)),
         }
     }
 }
@@ -304,7 +300,7 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
             let operand = interpret(unop.operand())?;
             match unop.operator().kind() {
                 TokenKind::Plus => match operand {
-                    Type::String { value, line } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
+                    Type::String { line, .. } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
                     _ => Ok(operand),
                 },
                 TokenKind::Minus => -operand,

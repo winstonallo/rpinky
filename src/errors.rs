@@ -1,5 +1,3 @@
-use std::string::FromUtf8Error;
-
 use colored::Colorize;
 
 #[derive(Debug, thiserror::Error)]

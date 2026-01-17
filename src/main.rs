@@ -1,20 +1,10 @@
-#![allow(unused)]
-
 use clap::Parser as _;
 use colored::Colorize;
 
-use crate::{lexer::Lexer, parser::Parser};
-
-mod cli;
-mod errors;
-mod interpreter;
-mod lexer;
-mod model;
-mod parser;
-mod tokens;
+use cpinky::{interpreter, lexer::Lexer, parser::Parser};
 
 fn main() {
-    let args = cli::Arguments::parse();
+    let args = cpinky::cli::Arguments::parse();
 
     let source = match std::fs::read_to_string(args.input_file()) {
         Ok(s) => s,
