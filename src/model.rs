@@ -3,6 +3,12 @@ use crate::{
     tokens::{Token, TokenKind},
 };
 
+#[derive(Clone)]
+pub enum Node<'src> {
+    Expr(Expr<'src>),
+    Stmt(Stmt<'src>),
+}
+
 /// Evaluates to a result
 #[derive(Clone)]
 pub enum Expr<'src> {
@@ -14,6 +20,27 @@ pub enum Expr<'src> {
     String(StringType),
     Bool(Bool),
     LogicalOp(LogicalOp<'src>),
+}
+
+#[derive(Clone, Debug)]
+pub enum Stmt<'src> {
+    Print(Print<'src>),
+    Println(Println<'src>),
+}
+
+#[derive(Debug)]
+pub struct Stmts<'src> {
+    stmts: Vec<Stmt<'src>>,
+}
+
+impl<'src> Stmts<'src> {
+    pub fn new(stmts: Vec<Stmt<'src>>) -> Self {
+        Self { stmts }
+    }
+
+    pub fn stmts(&self) -> &Vec<Stmt<'src>> {
+        &self.stmts
+    }
 }
 
 fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
@@ -56,9 +83,6 @@ impl<'src> std::fmt::Debug for Expr<'src> {
         dump_ast(self, f, None)
     }
 }
-
-/// Performs an action
-pub trait Stmt {}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Integer {
@@ -278,10 +302,38 @@ impl<'src> LogicalOp<'src> {
     }
 }
 
-pub struct WhileStmt {}
+#[derive(Clone, Debug)]
+pub struct While {}
 
-impl Stmt for WhileStmt {}
-
+#[derive(Clone, Debug)]
 pub struct Assignment {}
 
-impl Stmt for Assignment {}
+#[derive(Clone, Debug)]
+pub struct Print<'src> {
+    expr: Expr<'src>,
+}
+
+impl<'src> Print<'src> {
+    pub fn new(expr: Expr<'src>) -> Self {
+        Self { expr }
+    }
+
+    pub fn expr(&self) -> &Expr<'src> {
+        &self.expr
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Println<'src> {
+    expr: Expr<'src>,
+}
+
+impl<'src> Println<'src> {
+    pub fn new(expr: Expr<'src>) -> Self {
+        Self { expr }
+    }
+
+    pub fn expr(&self) -> &Expr<'src> {
+        &self.expr
+    }
+}

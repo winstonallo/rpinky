@@ -1,6 +1,6 @@
 use crate::{
     errors::ParseError,
-    model::{BinOp, Bool, Expr, Float, Integer, LogicalOp, StringType, UnOp},
+    model::{BinOp, Bool, Expr, Float, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
     tokens::{Token, TokenKind},
 };
 
@@ -203,11 +203,51 @@ impl<'src> Parser<'src> {
         Ok(expr)
     }
 
-    fn expr(&mut self) -> Result<Expr<'src>, ParseError> {
+    /// Evaluates an expression in the form of an AST.
+    pub fn expr(&mut self) -> Result<Expr<'src>, ParseError> {
         self.or()
     }
 
-    pub fn parse(&mut self) -> Result<Expr<'src>, ParseError> {
-        self.expr()
+    /// `<print> ::= 'print' <expr>`
+    fn print_stmt(&mut self) -> Result<Stmt<'src>, ParseError> {
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)) {
+            return Ok(Stmt::Print(Print::new(self.expr()?)));
+        }
+        Err(ParseError::new("idk bro".into(), 0))
+    }
+
+    /// `<println> ::= 'println' <expr>`
+    fn println_stmt(&mut self) -> Result<Stmt<'src>, ParseError> {
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)) {
+            return Ok(Stmt::Println(Println::new(self.expr()?)));
+        }
+        Err(ParseError::new("idk bro".into(), 0))
+    }
+
+    fn stmt(&mut self) -> Result<Stmt<'src>, ParseError> {
+        // predictive parsing, where the next token predicts the next statement
+        let token = self.peek();
+        match token.kind() {
+            TokenKind::Print => self.print_stmt(),
+            TokenKind::Println => self.println_stmt(),
+            _ => unimplemented!(),
+        }
+    }
+
+    fn stmts(&mut self) -> Result<Stmts<'src>, ParseError> {
+        let mut stmts = vec![];
+        while self.curr < self.tokens.len() {
+            stmts.push(self.stmt()?);
+        }
+        Ok(Stmts::new(stmts))
+    }
+
+    /// `<program> ::= <stmt>*`
+    fn program(&mut self) -> Result<Stmts<'src>, ParseError> {
+        self.stmts()
+    }
+
+    pub fn parse(&mut self) -> Result<Stmts<'src>, ParseError> {
+        self.program()
     }
 }

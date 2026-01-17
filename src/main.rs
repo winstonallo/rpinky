@@ -38,15 +38,13 @@ fn main() {
             return;
         }
     };
-    println!("{ast:?}");
+    println!("{ast:?}\n");
 
-    let val = match interpreter::interpret(&ast) {
-        Ok(v) => v,
+    match interpreter::interpret(&ast) {
+        Ok(..) => (),
         Err(e) => {
             eprintln!("{e}");
             return;
         }
     };
-
-    println!("{val:?}");
 }

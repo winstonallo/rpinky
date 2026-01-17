@@ -1,4 +1,8 @@
-use crate::{errors::RuntimeError, model::Expr, tokens::TokenKind};
+use crate::{
+    errors::RuntimeError,
+    model::{Expr, Stmt, Stmts},
+    tokens::TokenKind,
+};
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum Type {
@@ -261,7 +265,8 @@ impl std::ops::Not for Type {
     }
 }
 
-pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
+/// Evaluate a single expression.
+pub fn expr<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
     match ast {
         Expr::Integer(i) => Ok(Type::Number {
             value: i.value(),
@@ -279,10 +284,10 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
             value: b.value(),
             line: b.line(),
         }),
-        Expr::Grouping(expr) => interpret(expr),
+        Expr::Grouping(exp) => expr(exp),
         Expr::BinOp(binop) => {
-            let lhs = interpret(binop.lhs())?;
-            let rhs = interpret(binop.rhs())?;
+            let lhs = expr(binop.lhs())?;
+            let rhs = expr(binop.rhs())?;
             match binop.operator().kind() {
                 TokenKind::Plus => lhs + rhs,
                 TokenKind::Minus => lhs - rhs,
@@ -300,7 +305,7 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
             }
         }
         Expr::UnOp(unop) => {
-            let operand = interpret(unop.operand())?;
+            let operand = expr(unop.operand())?;
             match unop.operator().kind() {
                 TokenKind::Plus => match operand {
                     Type::String { line, .. } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
@@ -314,7 +319,7 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
         Expr::LogicalOp(logicalop) => {
             // first interpret and check left-hand side to allow
             // for short-circuiting
-            let lhs = interpret(logicalop.lhs())?;
+            let lhs = expr(logicalop.lhs())?;
             match logicalop.operator().kind() {
                 TokenKind::And => {
                     if !bool::from(&lhs) {
@@ -323,7 +328,7 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
                             line: lhs.line(),
                         });
                     }
-                    let rhs = interpret(logicalop.rhs())?;
+                    let rhs = expr(logicalop.rhs())?;
                     Ok(Type::Bool {
                         value: bool::from(&rhs),
                         line: lhs.line(),
@@ -333,7 +338,7 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
                     if bool::from(&lhs) {
                         return Ok(Type::Bool { value: true, line: lhs.line() });
                     }
-                    let rhs = interpret(logicalop.rhs())?;
+                    let rhs = expr(logicalop.rhs())?;
                     Ok(Type::Bool {
                         value: bool::from(&rhs),
                         line: lhs.line(),
@@ -343,4 +348,20 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
             }
         }
     }
+}
+
+pub fn interpret<'src>(stmts: &Stmts<'src>) -> Result<(), RuntimeError> {
+    for stmt in stmts.stmts() {
+        match stmt {
+            Stmt::Print(print_stmt) => {
+                let expr = expr(print_stmt.expr())?;
+                print!("{expr}");
+            }
+            Stmt::Println(print_stmt) => {
+                let expr = expr(print_stmt.expr())?;
+                println!("{expr}");
+            }
+        }
+    }
+    Ok(())
 }
