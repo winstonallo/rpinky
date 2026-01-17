@@ -229,3 +229,28 @@ pub fn match_reserved_keyword(token: &[u8], line: usize) -> Option<Token<'_>> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_character_in_number_literal() {
+        let mut lexer = Lexer::new(b"2a");
+        assert!(lexer.tokenize().is_err());
+    }
+
+    #[test]
+    fn punctuation_after_number_literal() {
+        let mut lexer = Lexer::new(b"2)");
+
+        let tokens = lexer.tokenize().unwrap();
+        assert_eq!(
+            *tokens,
+            vec![
+                Token::new(TokenKind::IntegerLiteral { lexeme: Lexeme::new(b"2") }, 1),
+                Token::new(TokenKind::RParen, 1)
+            ]
+        );
+    }
+}

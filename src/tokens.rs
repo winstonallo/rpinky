@@ -29,7 +29,7 @@ impl std::fmt::Debug for Lexeme<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Token<'src> {
     kind: TokenKind<'src>,
     line: usize,
