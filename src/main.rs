@@ -23,11 +23,12 @@ fn main() {
         }
     };
 
-    for tok in tokens {
-        println!("{tok:?}")
+    if args.token_dump() {
+        for tok in tokens {
+            println!("{tok:?}")
+        }
+        println!();
     }
-
-    println!();
 
     let mut parser = Parser::new(tokens.to_vec());
 
@@ -38,7 +39,10 @@ fn main() {
             return;
         }
     };
-    println!("{ast:?}\n");
+
+    if args.ast_dump() {
+        println!("{ast:?}\n");
+    }
 
     match interpreter::interpret(&ast) {
         Ok(..) => (),

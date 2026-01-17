@@ -21,7 +21,13 @@ impl Lexeme {
 impl std::fmt::Display for Lexeme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for ch in &self.value {
-            write!(f, "{}", *ch as char)?;
+            match *ch {
+                b'\n' => write!(f, "\\n")?,
+                b'\r' => write!(f, "\\r")?,
+                b'\t' => write!(f, "\\t")?,
+                b'\\' => write!(f, "\\")?,
+                _ => write!(f, "{}", *ch as char)?,
+            }
         }
         Ok(())
     }
