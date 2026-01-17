@@ -1,4 +1,8 @@
-use crate::{errors::RuntimeError, model::Expr, tokens::TokenKind};
+use crate::{
+    errors::RuntimeError,
+    model::{Bool, Expr, LogicalOp},
+    tokens::TokenKind,
+};
 
 #[derive(Debug)]
 pub enum Type {
@@ -111,6 +115,16 @@ impl Type {
                 line: *line,
             }),
             (lhs, rhs) => Err(RuntimeError::new(format!("equality not supported between {rhs} and {lhs}"), lhs.line())),
+        }
+    }
+}
+
+impl From<&Type> for bool {
+    fn from(value: &Type) -> Self {
+        match value {
+            Type::Bool { value, .. } => *value,
+            Type::Number { value, .. } => *value != 0f64,
+            Type::String { value, .. } => !value.is_empty(),
         }
     }
 }
@@ -250,6 +264,37 @@ pub fn interpret<'src>(ast: &Expr<'src>) -> Result<Type, RuntimeError> {
                 TokenKind::Minus => -operand,
                 TokenKind::Not => Ok(!operand),
                 _ => panic!("unsupported unary operation {unop:?}"),
+            }
+        }
+        Expr::LogicalOp(logicalop) => {
+            // first interpret and check left-hand side to allow
+            // for short-circuiting
+            let lhs = interpret(logicalop.lhs())?;
+            match logicalop.operator().kind() {
+                TokenKind::And => {
+                    if !bool::from(&lhs) {
+                        return Ok(Type::Bool {
+                            value: false,
+                            line: lhs.line(),
+                        });
+                    }
+                    let rhs = interpret(logicalop.rhs())?;
+                    Ok(Type::Bool {
+                        value: bool::from(&rhs),
+                        line: lhs.line(),
+                    })
+                }
+                TokenKind::Or => {
+                    if bool::from(&lhs) {
+                        return Ok(Type::Bool { value: true, line: lhs.line() });
+                    }
+                    let rhs = interpret(logicalop.rhs())?;
+                    Ok(Type::Bool {
+                        value: bool::from(&rhs),
+                        line: lhs.line(),
+                    })
+                }
+                _ => panic!("unsupported logical operation {logicalop:?}"),
             }
         }
     }

@@ -1,6 +1,6 @@
 use crate::{
     errors::ParseError,
-    model::{BinOp, Bool, Expr, Float, Integer, StringType, UnOp},
+    model::{BinOp, Bool, Expr, Float, Integer, LogicalOp, StringType, UnOp},
     tokens::{Token, TokenKind},
 };
 
@@ -179,7 +179,33 @@ impl<'src> Parser<'src> {
         Ok(expr)
     }
 
+    /// `<and> ::= <equality> ( 'and' <equality> )*`
+    fn and(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.equality()?;
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::And)) {
+            let operator = self.previous_token();
+            let right = self.equality()?;
+            expr = Expr::LogicalOp(LogicalOp::new(operator, expr, right));
+        }
+        Ok(expr)
+    }
+
+    /// `<or> ::= <and> ( 'or' <and> )*`
+    fn or(&mut self) -> Result<Expr<'src>, ParseError> {
+        let mut expr = self.and()?;
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Or)) {
+            let operator = self.previous_token();
+            let right = self.and()?;
+            expr = Expr::LogicalOp(LogicalOp::new(operator, expr, right));
+        }
+        Ok(expr)
+    }
+
+    fn expr(&mut self) -> Result<Expr<'src>, ParseError> {
+        self.or()
+    }
+
     pub fn parse(&mut self) -> Result<Expr<'src>, ParseError> {
-        self.equality()
+        self.expr()
     }
 }

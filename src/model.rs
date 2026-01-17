@@ -13,6 +13,7 @@ pub enum Expr<'src> {
     BinOp(BinOp<'src>),
     String(StringType),
     Bool(Bool),
+    LogicalOp(LogicalOp<'src>),
 }
 
 fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
@@ -39,6 +40,13 @@ fn dump_ast(ast: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usi
             writeln!(f, "{}{:?}", " ".repeat(indentation + 4), binop.operator)?;
             dump_ast(&binop.rhs, f, Some(indentation + 4))?;
             writeln!(f, "{}}} // binop", " ".repeat(indentation))
+        }
+        Expr::LogicalOp(logicalop) => {
+            writeln!(f, "{}LogicalOp {{", " ".repeat(indentation))?;
+            dump_ast(&logicalop.lhs, f, Some(indentation + 4))?;
+            writeln!(f, "{}{:?}", " ".repeat(indentation + 4), logicalop.operator)?;
+            dump_ast(&logicalop.rhs, f, Some(indentation + 4))?;
+            writeln!(f, "{}}} // logicalop", " ".repeat(indentation))
         }
     }
 }
@@ -204,9 +212,7 @@ impl<'src> BinOp<'src> {
             rhs: Box::new(rhs),
         }
     }
-}
 
-impl<'src> BinOp<'src> {
     pub fn operator(&self) -> Token<'src> {
         self.operator
     }
@@ -227,6 +233,13 @@ pub struct UnOp<'src> {
 }
 
 impl<'src> UnOp<'src> {
+    pub fn new(operator: Token<'src>, operand: Expr<'src>) -> Self {
+        Self {
+            operator,
+            operand: Box::new(operand),
+        }
+    }
+
     pub fn operator(&self) -> Token<'src> {
         self.operator
     }
@@ -236,12 +249,32 @@ impl<'src> UnOp<'src> {
     }
 }
 
-impl<'src> UnOp<'src> {
-    pub fn new(operator: Token<'src>, operand: Expr<'src>) -> Self {
+#[derive(Debug, Clone)]
+pub struct LogicalOp<'src> {
+    operator: Token<'src>,
+    lhs: Box<Expr<'src>>,
+    rhs: Box<Expr<'src>>,
+}
+
+impl<'src> LogicalOp<'src> {
+    pub fn new(operator: Token<'src>, lhs: Expr<'src>, rhs: Expr<'src>) -> Self {
         Self {
             operator,
-            operand: Box::new(operand),
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
         }
+    }
+
+    pub fn operator(&self) -> Token<'src> {
+        self.operator
+    }
+
+    pub fn lhs(&self) -> &Expr<'src> {
+        &self.lhs
+    }
+
+    pub fn rhs(&self) -> &Expr<'src> {
+        &self.rhs
     }
 }
 
