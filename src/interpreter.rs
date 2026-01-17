@@ -130,7 +130,7 @@ impl std::fmt::Display for Type {
         match self {
             Type::Number { value, .. } => write!(f, "{value}"),
             Type::Bool { value, .. } => write!(f, "{value}"),
-            Type::String { value, .. } => write!(f, "'{value}'"),
+            Type::String { value, .. } => write!(f, "{value}"),
         }
     }
 }

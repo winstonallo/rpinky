@@ -62,6 +62,14 @@ e2e!(b"~(44 >= 2)", cpinky::interpreter::Type::Bool { value: false, line: 1 }, b
 e2e!(b"~(3 ~= 2)", cpinky::interpreter::Type::Bool { value: false, line: 1 }, noteq);
 e2e!(b"(3 == 2 + 1)", cpinky::interpreter::Type::Bool { value: true, line: 1 }, eqeq);
 e2e!(b"-2 ^ 3", cpinky::interpreter::Type::Number { value: -8.0, line: 1 }, exponent_unary_minus);
+e2e!(
+    b"'hello' + ' ' + 'world'",
+    cpinky::interpreter::Type::String {
+        value: String::from("hello world"),
+        line: 1
+    },
+    string_concatenation
+);
 
 e2e_runtime_error!(b"1 / 0", cpinky::errors::RuntimeError::new("division by zero".into(), 1), division_by_zero);
 e2e_runtime_error!(b"1 % 0", cpinky::errors::RuntimeError::new("modulo by zero".into(), 1), modulo_by_zero);

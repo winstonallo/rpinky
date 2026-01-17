@@ -8,4 +8,6 @@
 -- false or true or true and false
 -- 1/1
 
- 2 + (44 >= 2)
+ -- 2 + (44 >= 2)
+
+ 'hello' + ' ' + 'world'
