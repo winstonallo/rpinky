@@ -1,1 +1,1 @@
-if 1 == 0 then print 'good' end
+if 1 == 0 then print 'good' else println (123 + (2 ^ -2)) end
