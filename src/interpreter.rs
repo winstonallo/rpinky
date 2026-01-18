@@ -326,7 +326,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             },
             TokenKind::Minus => -operand,
             TokenKind::Not => Ok(!operand),
-            _ => panic!("unsupported unary operation {op:?}"),
+            _ => Err(RuntimeError::new(format!("unsupported unary operation {op:?}"), operand.line())),
         }
     }
 
@@ -346,7 +346,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             TokenKind::LessEqual => lhs.le(&rhs),
             TokenKind::EqualEqual => lhs.eq(&rhs),
             TokenKind::NotEqual => Ok(!lhs.eq(&rhs)?),
-            _ => panic!("unsupported binary operation {op:?}"),
+            _ => Err(RuntimeError::new(format!("unsupported binary operation {op:?}"), lhs.line())),
         }
     }
 
@@ -377,7 +377,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
                     line: lhs.line(),
                 })
             }
-            _ => panic!("unsupported logical operation {op:?}"),
+            _ => Err(RuntimeError::new(format!("unsupported logical operation {op:?}"), lhs.line())),
         }
     }
 }
