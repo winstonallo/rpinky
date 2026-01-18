@@ -14,32 +14,28 @@ impl Parser {
         Self { tokens, curr: 0 }
     }
 
-    fn advance(&mut self) -> Option<&Token> {
-        if self.curr >= self.tokens.len() {
-            return None;
-        }
+    fn advance(&mut self) -> &Token {
+        debug_assert!(self.curr < self.tokens.len(), "called advance when tokens were already exhausted");
         let tok = &self.tokens[self.curr];
         self.curr += 1;
-        Some(tok)
+        tok
     }
 
     fn peek(&self) -> Token {
-        debug_assert!(self.curr < self.tokens.len());
+        debug_assert!(self.curr < self.tokens.len(), "called peek when tokens where already exhausted");
         (self.tokens[self.curr]).clone()
     }
 
     fn is_next<F: Fn(&Token) -> bool>(&self, predicate: F) -> bool {
-        if self.curr >= self.tokens.len() {
-            return false;
-        }
-        predicate(&self.tokens[self.curr])
+        debug_assert!(self.curr < self.tokens.len(), "called is_next when tokens where already exhausted");
+        predicate(&self.peek())
     }
 
     fn match_curr<F: Fn(&Token) -> bool>(&mut self, predicate: F) -> bool {
         if self.curr >= self.tokens.len() {
             return false;
         }
-        if !predicate(&self.tokens[self.curr]) {
+        if !predicate(&self.peek()) {
             return false;
         }
         self.curr += 1;
@@ -47,7 +43,7 @@ impl Parser {
     }
 
     fn previous_token(&self) -> Token {
-        debug_assert!(self.curr > 0);
+        debug_assert!(self.curr > 0, "called previous_token while at position 0");
         (self.tokens[self.curr - 1]).clone()
     }
 
@@ -113,6 +109,7 @@ impl Parser {
     /// `<modulo> ::= <unary> ( ( '%' ) <unary> )*`
     fn modulo(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.unary()?;
+
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Mod)) {
             let operator = self.previous_token();
             let right = self.modulo()?;
@@ -125,6 +122,7 @@ impl Parser {
     // aka `term`
     fn multiplication(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.modulo()?;
+
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star | TokenKind::Slash)) {
             let operator = self.previous_token();
             let right = self.modulo()?;
@@ -137,6 +135,7 @@ impl Parser {
     // aka `expr`
     fn addition(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.multiplication()?;
+
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus | TokenKind::Minus)) {
             let operator = self.previous_token();
             let right = self.multiplication()?;
@@ -148,6 +147,7 @@ impl Parser {
     /// `<comparison> := <addition> ( ( '<' | '<=' | '>' | '>=' ) <addition> )*`
     fn comparison(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.addition()?;
+
         while self.match_curr(|tok| {
             matches!(
                 tok.kind(),
@@ -164,6 +164,7 @@ impl Parser {
     /// `<equality> := <comparison> ( ( '==' | '~='  ) <comparison> )*`
     fn equality(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.comparison()?;
+
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::EqualEqual | TokenKind::NotEqual)) {
             let operator = self.previous_token();
             let right = self.comparison()?;
@@ -175,6 +176,7 @@ impl Parser {
     /// `<and> ::= <equality> ( 'and' <equality> )*`
     fn and(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.equality()?;
+
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::And)) {
             let operator = self.previous_token();
             let right = self.equality()?;
@@ -186,6 +188,7 @@ impl Parser {
     /// `<or> ::= <and> ( 'or' <and> )*`
     fn or(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.and()?;
+
         while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Or)) {
             let operator = self.previous_token();
             let right = self.and()?;
