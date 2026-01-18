@@ -1,6 +1,9 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     errors::RuntimeError,
     model::{BinOp, Bool, Expr, Float, If, Integer, LogicalOp, Print, Println, Stmts, StringType, UnOp},
+    state::Environment,
     tokens::TokenKind,
     visitor::{ExprVisitor, StmtVisitor},
 };
@@ -268,12 +271,13 @@ impl std::ops::Not for Type {
 }
 
 /// Visitor for evaluating AST.
-#[derive(Default)]
-pub struct Interpreter;
+pub struct Interpreter {
+    environment: Rc<RefCell<Environment>>,
+}
 
 impl Interpreter {
-    pub fn new() -> Self {
-        Self
+    pub fn new(environment: Rc<RefCell<Environment>>) -> Self {
+        Self { environment }
     }
 
     pub fn interpret(&mut self, stmts: &Stmts) -> Result<(), RuntimeError> {
@@ -281,6 +285,16 @@ impl Interpreter {
             stmt.accept(self)?;
         }
         Ok(())
+    }
+
+    pub fn environment(&mut self) -> &Rc<RefCell<Environment>> {
+        &self.environment
+    }
+
+    pub fn fork(&self) -> Self {
+        Self {
+            environment: Environment::fork(&self.environment),
+        }
     }
 }
 
@@ -404,10 +418,11 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         let Type::Bool { value, .. } = test else {
             return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
         };
+        let mut fork = self.fork();
         if value {
-            self.interpret(i.then())?;
+            fork.interpret(i.then())?;
         } else if let Some(r#else) = i.r#else() {
-            self.interpret(r#else)?;
+            fork.interpret(r#else)?;
         }
         Ok(())
     }
@@ -419,12 +434,12 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
 /// Evaluate a single expression.
 pub fn expr(ast: &Expr) -> Result<Type, RuntimeError> {
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new(Environment::new());
     ast.accept(&mut interpreter)
 }
 
 /// Interpret a list of statements.
 pub fn interpret(stmts: &Stmts) -> Result<(), RuntimeError> {
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new(Environment::new());
     interpreter.interpret(stmts)
 }
