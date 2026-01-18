@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod debug;
 pub mod errors;
 pub mod interpreter;
 pub mod lexer;

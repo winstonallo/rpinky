@@ -127,7 +127,6 @@ impl Parser {
     }
 
     /// `<multiplication> ::= <modulo> ( ( '*' | '/' ) <modulo> )*`
-    // aka `term`
     fn multiplication(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.modulo()?;
 
@@ -140,7 +139,6 @@ impl Parser {
     }
 
     /// `<addition> ::= <multiplication> ( ( '+' | '-' ) <multiplication> )*`
-    // aka `expr`
     fn addition(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.multiplication()?;
 
@@ -211,17 +209,21 @@ impl Parser {
     }
 
     fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
-        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)) {
-            return Ok(Stmt::Print(Print::new(self.expr()?)));
-        }
-        Err(ParseError::new("idk bro".into(), 0))
+        debug_assert!(
+            self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)),
+            "called print_stmt without 'print' token"
+        );
+
+        Ok(Stmt::Print(Print::new(self.expr()?)))
     }
 
     fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
-        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)) {
-            return Ok(Stmt::Println(Println::new(self.expr()?)));
-        }
-        Err(ParseError::new("idk bro".into(), 0))
+        debug_assert!(
+            self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)),
+            "called println_stmt without 'println' token"
+        );
+
+        Ok(Stmt::Println(Println::new(self.expr()?)))
     }
 
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
