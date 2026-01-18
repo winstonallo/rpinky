@@ -380,6 +380,10 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             _ => Err(RuntimeError::new(format!("unsupported logical operation {op:?}"), lhs.line())),
         }
     }
+
+    fn visit_identifier(&mut self, i: &crate::model::Identifier) -> Result<Type, RuntimeError> {
+        todo!()
+    }
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
@@ -409,7 +413,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_assignment(&mut self, a: &crate::model::Assignment) -> Result<(), RuntimeError> {
-        todo!()
+        unimplemented!("cannot assign yet")
     }
 }
 

@@ -22,6 +22,7 @@ pub enum Expr {
     String(StringType),
     Bool(Bool),
     LogicalOp(LogicalOp),
+    Identifier(Identifier),
 }
 
 impl Expr {
@@ -35,6 +36,7 @@ impl Expr {
             Expr::UnOp(op) => visitor.visit_unop(op),
             Expr::BinOp(op) => visitor.visit_binop(op),
             Expr::LogicalOp(op) => visitor.visit_logical(op),
+            Expr::Identifier(i) => visitor.visit_identifier(i),
         }
     }
 }
@@ -306,6 +308,21 @@ impl LogicalOp {
 
     pub fn rhs(&self) -> &Expr {
         &self.rhs
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Identifier {
+    name: String,
+}
+
+impl Identifier {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 

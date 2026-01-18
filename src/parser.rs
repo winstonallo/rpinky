@@ -1,6 +1,6 @@
 use crate::{
     errors::ParseError,
-    model::{BinOp, Bool, Expr, Float, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
+    model::{Assignment, BinOp, Bool, Expr, Float, Identifier, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
     tokens::{Token, TokenKind},
 };
 
@@ -59,6 +59,7 @@ impl Parser {
     ///              | <float>
     ///              | <bool>
     ///              | <string>
+    ///              | <identifier>
     ///              | '(' <expr> ')'`
     fn primary(&mut self) -> Result<Expr, ParseError> {
         let token = self.peek();
@@ -86,6 +87,10 @@ impl Parser {
                     return Err(ParseError::new("expected closing ')'".into(), token.line()));
                 }
                 Ok(Expr::Grouping(Box::new(expr)))
+            }
+            TokenKind::Identifier { lexeme } => {
+                self.advance();
+                Ok(Expr::Identifier(Identifier::new(lexeme.to_string())))
             }
             _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
         }
@@ -281,7 +286,15 @@ impl Parser {
             // lhs
             // if next == ':='
             //      return assigment
-            _ => unimplemented!("function call/assignment"),
+            _ => {
+                let lhs = self.expr()?;
+                if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
+                    let rhs = self.expr()?;
+                    return Ok(Stmt::Assignment(Assignment::new(lhs, rhs)));
+                } else {
+                    unimplemented!("function call")
+                }
+            }
         }
     }
 

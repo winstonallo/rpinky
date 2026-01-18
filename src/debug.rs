@@ -92,6 +92,10 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.dedent();
         writeln!(self.f, "{}}}", self.indent())
     }
+
+    fn visit_identifier(&mut self, i: &crate::model::Identifier) -> std::fmt::Result {
+        writeln!(self.f, "{}Identifier {{ {} }}", self.indent(), i.name())
+    }
 }
 
 impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
@@ -130,12 +134,14 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_assignment(&mut self, a: &crate::model::Assignment) -> std::fmt::Result {
-        writeln!(self.f, "{}assignment", self.indent())?;
+        writeln!(self.f, "{}assignment{{", self.indent())?;
         self.indented();
         a.lhs().accept(self)?;
-        writeln!(self.f, ":=")?;
+        writeln!(self.f, "{}:=", self.indent())?;
         a.rhs().accept(self)?;
         self.dedent();
+        writeln!(self.f, "{}}}", self.indent())?;
+
         Ok(())
     }
 }

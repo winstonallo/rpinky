@@ -10,6 +10,7 @@ pub trait ExprVisitor<T> {
     fn visit_unop(&mut self, op: &model::UnOp) -> T;
     fn visit_binop(&mut self, op: &model::BinOp) -> T;
     fn visit_logical(&mut self, op: &model::LogicalOp) -> T;
+    fn visit_identifier(&mut self, i: &model::Identifier) -> T;
 }
 
 /// Visitor trait for statement nodes.
