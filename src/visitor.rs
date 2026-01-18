@@ -1,9 +1,6 @@
 use crate::model::{BinOp, Bool, Float, If, Integer, LogicalOp, Print, Println, StringType, UnOp};
 
 /// Visitor trait for expression nodes.
-///
-/// Implement this trait to define operations over the expression AST.
-/// The type parameter `T` is the return type of each visit method.
 pub trait ExprVisitor<T> {
     fn visit_integer(&mut self, n: &Integer) -> T;
     fn visit_float(&mut self, f: &Float) -> T;
@@ -16,9 +13,6 @@ pub trait ExprVisitor<T> {
 }
 
 /// Visitor trait for statement nodes.
-///
-/// Implement this trait to define operations over the statement AST.
-/// The type parameter `T` is the return type of each visit method.
 pub trait StmtVisitor<T> {
     fn visit_print(&mut self, p: &Print) -> T;
     fn visit_println(&mut self, p: &Println) -> T;

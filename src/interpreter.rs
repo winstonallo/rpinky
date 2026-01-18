@@ -134,7 +134,7 @@ impl From<&Type> for bool {
     }
 }
 
-impl std::fmt::Display for Type {
+impl ::std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Type::Number { value, .. } => write!(f, "{value}"),
@@ -144,7 +144,7 @@ impl std::fmt::Display for Type {
     }
 }
 
-impl std::ops::Add for Type {
+impl ::std::ops::Add for Type {
     type Output = Result<Self, RuntimeError>;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -243,7 +243,7 @@ impl ::std::ops::Rem for Type {
     }
 }
 
-impl std::ops::Neg for Type {
+impl ::std::ops::Neg for Type {
     type Output = Result<Self, RuntimeError>;
 
     fn neg(self) -> Self::Output {
@@ -255,7 +255,7 @@ impl std::ops::Neg for Type {
     }
 }
 
-impl std::ops::Not for Type {
+impl ::std::ops::Not for Type {
     type Output = Self;
 
     fn not(self) -> Self::Output {
