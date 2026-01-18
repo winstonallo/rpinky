@@ -32,10 +32,6 @@ impl Environment {
         }
     }
 
-    // pub fn store(&mut self, identifier: String, value: Type) {
-    //     self.vars.insert(identifier, value);
-    // }
-
     /// Store in the scope where the variable is defined, or current if new
     pub fn assign(&mut self, identifier: String, value: Type) {
         if self.vars.contains_key(&identifier) {
