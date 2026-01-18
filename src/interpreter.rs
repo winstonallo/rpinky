@@ -395,7 +395,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_identifier(&mut self, i: &crate::model::Identifier) -> Result<Type, RuntimeError> {
+    fn visit_identifier(&mut self, _i: &crate::model::Identifier) -> Result<Type, RuntimeError> {
         todo!()
     }
 }
@@ -418,7 +418,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         let Type::Bool { value, .. } = test else {
             return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
         };
-        let mut fork = self.fork();
+        let mut fork = self.fork(); // create new scope for the block
         if value {
             fork.interpret(i.then())?;
         } else if let Some(r#else) = i.r#else() {
@@ -427,7 +427,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_assignment(&mut self, a: &crate::model::Assignment) -> Result<(), RuntimeError> {
+    fn visit_assignment(&mut self, _a: &crate::model::Assignment) -> Result<(), RuntimeError> {
         unimplemented!("cannot assign yet")
     }
 }
