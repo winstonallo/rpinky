@@ -290,7 +290,7 @@ impl Parser {
                 let lhs = self.expr()?;
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
                     let rhs = self.expr()?;
-                    return Ok(Stmt::Assignment(Assignment::new(lhs, rhs)));
+                    Ok(Stmt::Assignment(Assignment::new(lhs, rhs)))
                 } else {
                     unimplemented!("function call")
                 }

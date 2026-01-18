@@ -5,7 +5,7 @@ use crate::{
     visitor::{ExprVisitor, StmtVisitor},
 };
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub enum Type {
     Number { value: f64, line: usize },
     Bool { value: bool, line: usize },
