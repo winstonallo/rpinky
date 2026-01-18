@@ -1,0 +1,32 @@
+name: Run tests
+
+on:
+    workflow_dispatch:
+
+    push: &on_config
+        branches: ["**"]
+        paths:
+            - src/**
+            - tests/**
+            - Cargo.toml
+            - Cargo.lock
+            - .github/workflows/test.yml
+            - "*.py"
+            - "*.sh"
+
+    pull_request:
+        <<: *on_config
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    build_and_test:
+        timeout-minutes: 10
+        name: Rust project - latest
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+            - run: cargo test
