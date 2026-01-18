@@ -1,15 +1,17 @@
+use std::rc::Rc;
+
 use crate::lexer::unescape;
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Lexeme {
-    value: Vec<u8>,
+    value: Rc<[u8]>,
 }
 
 impl Lexeme {
     pub fn new(value: Vec<u8>) -> Self {
         let value = unescape(&value);
 
-        Self { value }
+        Self { value: value.into() }
     }
 
     pub fn value(&self) -> &[u8] {
@@ -20,7 +22,7 @@ impl Lexeme {
 // impl Display for Lexeme so the bytes are displayed as chars.
 impl std::fmt::Display for Lexeme {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for ch in &self.value {
+        for ch in self.value.iter() {
             match *ch {
                 b'\n' => write!(f, "\\n")?,
                 b'\r' => write!(f, "\\r")?,

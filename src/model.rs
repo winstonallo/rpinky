@@ -54,27 +54,27 @@ fn dump_expr(expr: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<u
         Expr::String(str) => writeln!(f, "{}{str:?}", " ".repeat(indentation)),
         Expr::Grouping(group) => {
             writeln!(f, "{}Grouping (", " ".repeat(indentation))?;
-            dump_expr(group, f, Some(indentation + 4))?;
+            dump_expr(group, f, Some(indentation + 2))?;
             writeln!(f, "{})", " ".repeat(indentation))
         }
         Expr::UnOp(unop) => {
             writeln!(f, "{}UnOp {{", " ".repeat(indentation))?;
-            writeln!(f, "{}{:?}", " ".repeat(indentation + 4), unop.operator)?;
-            dump_expr(&unop.operand, f, Some(indentation + 4))?;
+            writeln!(f, "{}{:?}", " ".repeat(indentation + 2), unop.operator)?;
+            dump_expr(&unop.operand, f, Some(indentation + 2))?;
             writeln!(f, "{}}}", " ".repeat(indentation))
         }
         Expr::BinOp(binop) => {
             writeln!(f, "{}BinOp {{", " ".repeat(indentation))?;
-            dump_expr(&binop.lhs, f, Some(indentation + 4))?;
-            writeln!(f, "{}{:?}", " ".repeat(indentation + 4), binop.operator)?;
-            dump_expr(&binop.rhs, f, Some(indentation + 4))?;
+            dump_expr(&binop.lhs, f, Some(indentation + 2))?;
+            writeln!(f, "{}{:?}", " ".repeat(indentation + 2), binop.operator)?;
+            dump_expr(&binop.rhs, f, Some(indentation + 2))?;
             writeln!(f, "{}}}", " ".repeat(indentation))
         }
         Expr::LogicalOp(logicalop) => {
             writeln!(f, "{}LogicalOp {{", " ".repeat(indentation))?;
-            dump_expr(&logicalop.lhs, f, Some(indentation + 4))?;
-            writeln!(f, "{}{:?}", " ".repeat(indentation + 4), logicalop.operator)?;
-            dump_expr(&logicalop.rhs, f, Some(indentation + 4))?;
+            dump_expr(&logicalop.lhs, f, Some(indentation + 2))?;
+            writeln!(f, "{}{:?}", " ".repeat(indentation + 2), logicalop.operator)?;
+            dump_expr(&logicalop.rhs, f, Some(indentation + 2))?;
             writeln!(f, "{}}}", " ".repeat(indentation))
         }
     }
@@ -92,22 +92,22 @@ fn dump_stmt(stmt: &Stmt, f: &mut std::fmt::Formatter<'_>, indentation: Option<u
     match stmt {
         Stmt::If(stmt) => {
             writeln!(f, "{}if", " ".repeat(indentation))?;
-            dump_expr(&stmt.test, f, Some(indentation + 4))?;
+            dump_expr(&stmt.test, f, Some(indentation + 2))?;
             writeln!(f, "{}then", " ".repeat(indentation))?;
-            dump_stmts(stmt.then(), f, Some(indentation + 4))?;
+            dump_stmts(stmt.then(), f, Some(indentation + 2))?;
             if let Some(elsee) = stmt.r#else() {
                 writeln!(f, "{}else", " ".repeat(indentation))?;
-                dump_stmts(elsee, f, Some(indentation + 4))?;
+                dump_stmts(elsee, f, Some(indentation + 2))?;
             }
-            writeln!(f, "end")
+            writeln!(f, "{}end", " ".repeat(indentation))
         }
         Stmt::Print(stmt) => {
             writeln!(f, "{}print", " ".repeat(indentation))?;
-            dump_expr(stmt.expr(), f, Some(indentation + 4))
+            dump_expr(stmt.expr(), f, Some(indentation + 2))
         }
         Stmt::Println(stmt) => {
             writeln!(f, "{}println", " ".repeat(indentation))?;
-            dump_expr(stmt.expr(), f, Some(indentation + 4))
+            dump_expr(stmt.expr(), f, Some(indentation + 2))
         }
     }
 }
