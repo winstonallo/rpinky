@@ -90,7 +90,7 @@ impl Parser {
             }
             TokenKind::Identifier { lexeme } => {
                 self.advance();
-                Ok(Expr::Identifier(Identifier::new(lexeme.to_string())))
+                Ok(Expr::Identifier(Identifier::new(lexeme.to_string(), token.line())))
             }
             _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
         }

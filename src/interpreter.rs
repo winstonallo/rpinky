@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     errors::RuntimeError,
-    model::{BinOp, Bool, Expr, Float, If, Integer, LogicalOp, Print, Println, Stmts, StringType, UnOp},
+    model,
     state::Environment,
     tokens::TokenKind,
     visitor::{ExprVisitor, StmtVisitor},
@@ -280,7 +280,7 @@ impl Interpreter {
         Self { environment }
     }
 
-    pub fn interpret(&mut self, stmts: &Stmts) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, stmts: &model::Stmts) -> Result<(), RuntimeError> {
         for stmt in stmts.stmts() {
             stmt.accept(self)?;
         }
@@ -299,39 +299,39 @@ impl Interpreter {
 }
 
 impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
-    fn visit_integer(&mut self, n: &Integer) -> Result<Type, RuntimeError> {
+    fn visit_integer(&mut self, n: &model::Integer) -> Result<Type, RuntimeError> {
         Ok(Type::Number {
             value: n.value(),
             line: n.line(),
         })
     }
 
-    fn visit_float(&mut self, f: &Float) -> Result<Type, RuntimeError> {
+    fn visit_float(&mut self, f: &model::Float) -> Result<Type, RuntimeError> {
         Ok(Type::Number {
             value: f.value(),
             line: f.line(),
         })
     }
 
-    fn visit_string(&mut self, s: &StringType) -> Result<Type, RuntimeError> {
+    fn visit_string(&mut self, s: &model::StringType) -> Result<Type, RuntimeError> {
         Ok(Type::String {
             value: s.value().into(),
             line: s.line(),
         })
     }
 
-    fn visit_bool(&mut self, b: &Bool) -> Result<Type, RuntimeError> {
+    fn visit_bool(&mut self, b: &model::Bool) -> Result<Type, RuntimeError> {
         Ok(Type::Bool {
             value: b.value(),
             line: b.line(),
         })
     }
 
-    fn visit_grouping(&mut self, inner: &Expr) -> Result<Type, RuntimeError> {
+    fn visit_grouping(&mut self, inner: &model::Expr) -> Result<Type, RuntimeError> {
         inner.accept(self)
     }
 
-    fn visit_unop(&mut self, op: &UnOp) -> Result<Type, RuntimeError> {
+    fn visit_unop(&mut self, op: &model::UnOp) -> Result<Type, RuntimeError> {
         let operand = op.operand().accept(self)?;
         match op.operator().kind() {
             TokenKind::Plus => match operand {
@@ -344,7 +344,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_binop(&mut self, op: &BinOp) -> Result<Type, RuntimeError> {
+    fn visit_binop(&mut self, op: &model::BinOp) -> Result<Type, RuntimeError> {
         let lhs = op.lhs().accept(self)?;
         let rhs = op.rhs().accept(self)?;
         match op.operator().kind() {
@@ -364,7 +364,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_logical(&mut self, op: &LogicalOp) -> Result<Type, RuntimeError> {
+    fn visit_logical(&mut self, op: &model::LogicalOp) -> Result<Type, RuntimeError> {
         // First interpret and check left-hand side to allow for short-circuiting
         let lhs = op.lhs().accept(self)?;
         match op.operator().kind() {
@@ -395,25 +395,28 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_identifier(&mut self, _i: &crate::model::Identifier) -> Result<Type, RuntimeError> {
-        todo!()
+    fn visit_identifier(&mut self, i: &model::Identifier) -> Result<Type, RuntimeError> {
+        match self.environment().borrow().load(i.name()) {
+            Some(value) => Ok(value),
+            None => Err(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
+        }
     }
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
-    fn visit_print(&mut self, p: &Print) -> Result<(), RuntimeError> {
+    fn visit_print(&mut self, p: &model::Print) -> Result<(), RuntimeError> {
         let value = p.expr().accept(self)?;
         print!("{value}");
         Ok(())
     }
 
-    fn visit_println(&mut self, p: &Println) -> Result<(), RuntimeError> {
+    fn visit_println(&mut self, p: &model::Println) -> Result<(), RuntimeError> {
         let value = p.expr().accept(self)?;
         println!("{value}");
         Ok(())
     }
 
-    fn visit_if(&mut self, i: &If) -> Result<(), RuntimeError> {
+    fn visit_if(&mut self, i: &model::If) -> Result<(), RuntimeError> {
         let test = i.test().accept(self)?;
         let Type::Bool { value, .. } = test else {
             return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
@@ -427,19 +430,25 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_assignment(&mut self, _a: &crate::model::Assignment) -> Result<(), RuntimeError> {
-        unimplemented!("cannot assign yet")
+    fn visit_assignment(&mut self, a: &model::Assignment) -> Result<(), RuntimeError> {
+        let rvalue = a.rhs().accept(self)?;
+        let model::Expr::Identifier(i) = a.lhs() else {
+            return Err(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), rvalue.line()));
+        };
+
+        self.environment().borrow_mut().assign(i.name().into(), rvalue);
+        Ok(())
     }
 }
 
 /// Evaluate a single expression.
-pub fn expr(ast: &Expr) -> Result<Type, RuntimeError> {
+pub fn expr(ast: &model::Expr) -> Result<Type, RuntimeError> {
     let mut interpreter = Interpreter::new(Environment::new());
     ast.accept(&mut interpreter)
 }
 
 /// Interpret a list of statements.
-pub fn interpret(stmts: &Stmts) -> Result<(), RuntimeError> {
+pub fn interpret(stmts: &model::Stmts) -> Result<(), RuntimeError> {
     let mut interpreter = Interpreter::new(Environment::new());
     interpreter.interpret(stmts)
 }
