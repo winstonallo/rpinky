@@ -60,6 +60,7 @@ impl<'src> Lexer<'src> {
         while self.curr < self.source.len() {
             self.start = self.curr;
             let Some(c) = self.advance() else {
+                self.tokens.push(Token::new(TokenKind::Eof, self.line));
                 return Ok(&self.tokens);
             };
 
@@ -133,10 +134,11 @@ impl<'src> Lexer<'src> {
                 b'\'' => self.handle_string_literal(b'\'')?,
                 b'"' => self.handle_string_literal(b'"')?,
                 b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.handle_identifier()?,
-                _ => panic!("[Line {}] Unexpected character: '{}'", self.line, c as char),
+                _ => return Err(TokenizationError::new(format!("unexpected character: '{}'", c as char), self.line)),
             }
         }
 
+        self.tokens.push(Token::new(TokenKind::Eof, self.line));
         Ok(&self.tokens)
     }
 
@@ -289,7 +291,8 @@ mod tests {
                     },
                     1
                 ),
-                Token::new(TokenKind::RParen, 1)
+                Token::new(TokenKind::RParen, 1),
+                Token::new(TokenKind::Eof, 1),
             ]
         );
     }

@@ -28,12 +28,11 @@ impl Parser {
         (self.tokens[self.curr]).clone()
     }
 
-    #[allow(unused)]
     fn is_next<F: Fn(&Token) -> bool>(&self, predicate: F) -> bool {
         if self.curr >= self.tokens.len() {
             return false;
         }
-        predicate(&self.tokens[self.curr + 1])
+        predicate(&self.tokens[self.curr])
     }
 
     fn match_curr<F: Fn(&Token) -> bool>(&mut self, predicate: F) -> bool {
@@ -76,10 +75,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::Float(Float::try_from(&token)?))
             }
-            TokenKind::LParen { .. } => {
+            TokenKind::LParen => {
                 self.advance();
                 let expr = self.expr()?;
-                if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen { .. })) {
+                if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
                     return Err(ParseError::new("expected closing ')'".into(), token.line()));
                 }
                 Ok(Expr::Grouping(Box::new(expr)))
@@ -92,7 +91,7 @@ impl Parser {
     fn exponent(&mut self) -> Result<Expr, ParseError> {
         let base = self.primary()?;
 
-        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Caret { .. })) {
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Caret)) {
             let operator = self.previous_token();
             let exponent = self.unary()?; // have to go back up here to solve expressions like 2 ^ -3
             return Ok(Expr::BinOp(BinOp::new(operator, base, exponent)));
@@ -103,7 +102,7 @@ impl Parser {
 
     /// `<unary> ::= ( '-' | '~' )* <exponent>`
     fn unary(&mut self) -> Result<Expr, ParseError> {
-        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not { .. } | TokenKind::Minus { .. })) {
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Not | TokenKind::Minus)) {
             let operator = self.previous_token();
             let operand = self.unary()?;
             return Ok(Expr::UnOp(UnOp::new(operator, operand)));
@@ -114,7 +113,7 @@ impl Parser {
     /// `<modulo> ::= <unary> ( ( '%' ) <unary> )*`
     fn modulo(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.unary()?;
-        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Mod { .. })) {
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Mod)) {
             let operator = self.previous_token();
             let right = self.modulo()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
@@ -126,7 +125,7 @@ impl Parser {
     // aka `term`
     fn multiplication(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.modulo()?;
-        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star { .. } | TokenKind::Slash { .. })) {
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Star | TokenKind::Slash)) {
             let operator = self.previous_token();
             let right = self.modulo()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
@@ -138,7 +137,7 @@ impl Parser {
     // aka `expr`
     fn addition(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.multiplication()?;
-        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus { .. } | TokenKind::Minus { .. })) {
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Plus | TokenKind::Minus)) {
             let operator = self.previous_token();
             let right = self.multiplication()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
@@ -152,7 +151,7 @@ impl Parser {
         while self.match_curr(|tok| {
             matches!(
                 tok.kind(),
-                TokenKind::Less { .. } | TokenKind::LessEqual { .. } | TokenKind::Greater { .. } | TokenKind::GreaterEqual { .. }
+                TokenKind::Less | TokenKind::LessEqual | TokenKind::Greater | TokenKind::GreaterEqual
             )
         }) {
             let operator = self.previous_token();
@@ -165,7 +164,7 @@ impl Parser {
     /// `<equality> := <comparison> ( ( '==' | '~='  ) <comparison> )*`
     fn equality(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.comparison()?;
-        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::EqualEqual { .. } | TokenKind::NotEqual { .. })) {
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::EqualEqual | TokenKind::NotEqual)) {
             let operator = self.previous_token();
             let right = self.comparison()?;
             expr = Expr::BinOp(BinOp::new(operator, expr, right));
@@ -255,7 +254,7 @@ impl Parser {
     fn stmts(&mut self) -> Result<Stmts, ParseError> {
         let mut stmts = vec![];
         // loop until end of block or EOF
-        while self.curr < self.tokens.len() && !matches!(self.peek().kind(), TokenKind::Else | TokenKind::End) {
+        while !self.is_next(|tok| matches!(tok.kind(), TokenKind::Else | TokenKind::End | TokenKind::Eof)) {
             stmts.push(self.stmt()?);
         }
         Ok(Stmts::new(stmts))

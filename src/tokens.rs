@@ -112,6 +112,7 @@ pub enum TokenKind {
     Print,
     Println,
     Ret,
+    Eof,
 }
 
 impl std::fmt::Display for TokenKind {
@@ -165,6 +166,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Print => write!(f, "keyword: print"),
             TokenKind::Println => write!(f, "keyword: println"),
             TokenKind::Ret => write!(f, "keyword: ret"),
+            TokenKind::Eof => write!(f, "EOF"),
         }
     }
 }
