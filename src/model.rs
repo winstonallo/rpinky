@@ -314,15 +314,20 @@ impl LogicalOp {
 #[derive(Debug, Clone)]
 pub struct Identifier {
     name: String,
+    line: usize,
 }
 
 impl Identifier {
-    pub fn new(name: String) -> Self {
-        Self { name }
+    pub fn new(name: String, line: usize) -> Self {
+        Self { name, line }
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
 
