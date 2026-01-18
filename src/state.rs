@@ -22,8 +22,8 @@ impl Environment {
         }))
     }
 
-    pub fn load(&self, identifier: String) -> Option<Type> {
-        if let Some(val) = self.vars.get(&identifier) {
+    pub fn load(&self, identifier: &str) -> Option<Type> {
+        if let Some(val) = self.vars.get(identifier) {
             Some(val.clone())
         } else if let Some(parent) = &self.parent {
             parent.borrow().load(identifier)
@@ -32,15 +32,17 @@ impl Environment {
         }
     }
 
-    pub fn store(&mut self, identifier: String, value: Type) {
-        self.vars.insert(identifier, value);
-    }
+    // pub fn store(&mut self, identifier: String, value: Type) {
+    //     self.vars.insert(identifier, value);
+    // }
 
     /// Store in the scope where the variable is defined, or current if new
     pub fn assign(&mut self, identifier: String, value: Type) {
         if self.vars.contains_key(&identifier) {
             self.vars.insert(identifier, value);
-        } else if let Some(parent) = &self.parent {
+        } else if let Some(parent) = &self.parent
+            && parent.borrow().load(&identifier).is_some()
+        {
             parent.borrow_mut().assign(identifier, value);
         } else {
             self.vars.insert(identifier, value);
