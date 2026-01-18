@@ -407,6 +407,10 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         }
         Ok(())
     }
+
+    fn visit_assignment(&mut self, a: &crate::model::Assignment) -> Result<(), RuntimeError> {
+        todo!()
+    }
 }
 
 /// Evaluate a single expression.

@@ -277,7 +277,11 @@ impl Parser {
             TokenKind::Print => self.print_stmt(),
             TokenKind::Println => self.println_stmt(),
             TokenKind::If => self.if_stmt(),
-            _ => unimplemented!(),
+            // assigment:
+            // lhs
+            // if next == ':='
+            //      return assigment
+            _ => unimplemented!("function call/assignment"),
         }
     }
 

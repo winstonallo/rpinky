@@ -44,6 +44,7 @@ pub enum Stmt {
     Print(Print),
     Println(Println),
     If(If),
+    Assignment(Assignment),
 }
 
 impl Stmt {
@@ -52,6 +53,7 @@ impl Stmt {
             Stmt::Print(p) => visitor.visit_print(p),
             Stmt::Println(p) => visitor.visit_println(p),
             Stmt::If(i) => visitor.visit_if(i),
+            Stmt::Assignment(a) => visitor.visit_assignment(a),
         }
     }
 }
@@ -310,8 +312,26 @@ impl LogicalOp {
 #[derive(Clone, Debug)]
 pub struct While {}
 
+/// `<assign> ::= <identifier> ':=' <expr>`
 #[derive(Clone, Debug)]
-pub struct Assignment {}
+pub struct Assignment {
+    lhs: Expr, // TODO: add some kind of LValue type
+    rhs: Expr,
+}
+
+impl Assignment {
+    pub fn new(lhs: Expr, rhs: Expr) -> Self {
+        Self { lhs, rhs }
+    }
+
+    pub fn lhs(&self) -> &Expr {
+        &self.lhs
+    }
+
+    pub fn rhs(&self) -> &Expr {
+        &self.rhs
+    }
+}
 
 /// `<print> ::= 'print' <expr>`
 #[derive(Clone, Debug)]

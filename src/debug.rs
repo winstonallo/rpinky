@@ -128,6 +128,16 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         }
         writeln!(self.f, "{}end", self.indent())
     }
+
+    fn visit_assignment(&mut self, a: &crate::model::Assignment) -> std::fmt::Result {
+        writeln!(self.f, "{}assignment", self.indent())?;
+        self.indented();
+        a.lhs().accept(self)?;
+        writeln!(self.f, ":=")?;
+        a.rhs().accept(self)?;
+        self.dedent();
+        Ok(())
+    }
 }
 
 pub fn dump_expr(expr: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
