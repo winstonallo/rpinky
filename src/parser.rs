@@ -36,17 +36,6 @@ impl Parser {
         predicate(&self.tokens[self.curr + 1])
     }
 
-    #[allow(unused)]
-    fn expect<F: Fn(Token) -> Result<Token, ParseError>>(&self, predicate: F) -> Result<Token, ParseError> {
-        if self.curr >= self.tokens.len() {
-            return Err(ParseError::new(
-                format!("found {:?} at the end of parsing", self.previous_token()),
-                self.previous_token().line(),
-            ));
-        }
-        predicate(self.peek())
-    }
-
     fn match_curr<F: Fn(&Token) -> bool>(&mut self, predicate: F) -> bool {
         if self.curr >= self.tokens.len() {
             return false;
