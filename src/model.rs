@@ -121,7 +121,7 @@ impl std::fmt::Debug for Stmt {
 fn dump_stmts(stmts: &Stmts, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
     let indentation = indentation.unwrap_or(0);
     for stmt in &stmts.stmts {
-        writeln!(f, "{}{stmt:?}", " ".repeat(indentation))?;
+        dump_stmt(stmt, f, Some(indentation))?;
     }
     Ok(())
 }
