@@ -2,6 +2,7 @@ use crate::{
     debug,
     errors::ParseError,
     tokens::{Token, TokenKind},
+    visitor::{ExprVisitor, StmtVisitor},
 };
 
 #[derive(Clone)]
@@ -23,11 +24,36 @@ pub enum Expr {
     LogicalOp(LogicalOp),
 }
 
+impl Expr {
+    pub fn accept<T>(&self, visitor: &mut impl ExprVisitor<T>) -> T {
+        match self {
+            Expr::Integer(n) => visitor.visit_integer(n),
+            Expr::Float(f) => visitor.visit_float(f),
+            Expr::String(s) => visitor.visit_string(s),
+            Expr::Bool(b) => visitor.visit_bool(b),
+            Expr::Grouping(inner) => visitor.visit_grouping(inner),
+            Expr::UnOp(op) => visitor.visit_unop(op),
+            Expr::BinOp(op) => visitor.visit_binop(op),
+            Expr::LogicalOp(op) => visitor.visit_logical(op),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum Stmt {
     Print(Print),
     Println(Println),
     If(If),
+}
+
+impl Stmt {
+    pub fn accept<T>(&self, visitor: &mut impl StmtVisitor<T>) -> T {
+        match self {
+            Stmt::Print(p) => visitor.visit_print(p),
+            Stmt::Println(p) => visitor.visit_println(p),
+            Stmt::If(i) => visitor.visit_if(i),
+        }
+    }
 }
 
 #[derive(Clone)]

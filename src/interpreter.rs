@@ -1,7 +1,8 @@
 use crate::{
     errors::RuntimeError,
-    model::{Expr, Stmt, Stmts},
+    model::{BinOp, Bool, Expr, Float, If, Integer, LogicalOp, Print, Println, Stmts, StringType, UnOp},
     tokens::TokenKind,
+    visitor::{ExprVisitor, StmtVisitor},
 };
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -266,108 +267,156 @@ impl std::ops::Not for Type {
     }
 }
 
-/// Evaluate a single expression.
-pub fn expr(ast: &Expr) -> Result<Type, RuntimeError> {
-    match ast {
-        Expr::Integer(i) => Ok(Type::Number {
-            value: i.value(),
-            line: i.line(),
-        }),
-        Expr::Float(f) => Ok(Type::Number {
+/// Visitor for evaluating AST.
+#[derive(Default)]
+pub struct Interpreter;
+
+impl Interpreter {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn interpret(&mut self, stmts: &Stmts) -> Result<(), RuntimeError> {
+        for stmt in stmts.stmts() {
+            stmt.accept(self)?;
+        }
+        Ok(())
+    }
+}
+
+impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
+    fn visit_integer(&mut self, n: &Integer) -> Result<Type, RuntimeError> {
+        Ok(Type::Number {
+            value: n.value(),
+            line: n.line(),
+        })
+    }
+
+    fn visit_float(&mut self, f: &Float) -> Result<Type, RuntimeError> {
+        Ok(Type::Number {
             value: f.value(),
             line: f.line(),
-        }),
-        Expr::String(s) => Ok(Type::String {
+        })
+    }
+
+    fn visit_string(&mut self, s: &StringType) -> Result<Type, RuntimeError> {
+        Ok(Type::String {
             value: s.value().into(),
             line: s.line(),
-        }),
-        Expr::Bool(b) => Ok(Type::Bool {
+        })
+    }
+
+    fn visit_bool(&mut self, b: &Bool) -> Result<Type, RuntimeError> {
+        Ok(Type::Bool {
             value: b.value(),
             line: b.line(),
-        }),
-        Expr::Grouping(exp) => expr(exp),
-        Expr::BinOp(binop) => {
-            let lhs = expr(binop.lhs())?;
-            let rhs = expr(binop.rhs())?;
-            match binop.operator().kind() {
-                TokenKind::Plus => lhs + rhs,
-                TokenKind::Minus => lhs - rhs,
-                TokenKind::Star => lhs * rhs,
-                TokenKind::Slash => lhs / rhs,
-                TokenKind::Caret => lhs.pow(rhs),
-                TokenKind::Mod => lhs % rhs,
-                TokenKind::Greater => lhs.gt(&rhs),
-                TokenKind::GreaterEqual => lhs.ge(&rhs),
-                TokenKind::Less => lhs.lt(&rhs),
-                TokenKind::LessEqual => lhs.le(&rhs),
-                TokenKind::EqualEqual => lhs.eq(&rhs),
-                TokenKind::NotEqual => Ok(!lhs.eq(&rhs)?),
-                _ => panic!("unsupported binary operation {binop:?}"),
-            }
+        })
+    }
+
+    fn visit_grouping(&mut self, inner: &Expr) -> Result<Type, RuntimeError> {
+        inner.accept(self)
+    }
+
+    fn visit_unop(&mut self, op: &UnOp) -> Result<Type, RuntimeError> {
+        let operand = op.operand().accept(self)?;
+        match op.operator().kind() {
+            TokenKind::Plus => match operand {
+                Type::String { line, .. } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
+                _ => Ok(operand),
+            },
+            TokenKind::Minus => -operand,
+            TokenKind::Not => Ok(!operand),
+            _ => panic!("unsupported unary operation {op:?}"),
         }
-        Expr::UnOp(unop) => {
-            let operand = expr(unop.operand())?;
-            match unop.operator().kind() {
-                TokenKind::Plus => match operand {
-                    Type::String { line, .. } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
-                    _ => Ok(operand),
-                },
-                TokenKind::Minus => -operand,
-                TokenKind::Not => Ok(!operand),
-                _ => panic!("unsupported unary operation {unop:?}"),
-            }
+    }
+
+    fn visit_binop(&mut self, op: &BinOp) -> Result<Type, RuntimeError> {
+        let lhs = op.lhs().accept(self)?;
+        let rhs = op.rhs().accept(self)?;
+        match op.operator().kind() {
+            TokenKind::Plus => lhs + rhs,
+            TokenKind::Minus => lhs - rhs,
+            TokenKind::Star => lhs * rhs,
+            TokenKind::Slash => lhs / rhs,
+            TokenKind::Caret => lhs.pow(rhs),
+            TokenKind::Mod => lhs % rhs,
+            TokenKind::Greater => lhs.gt(&rhs),
+            TokenKind::GreaterEqual => lhs.ge(&rhs),
+            TokenKind::Less => lhs.lt(&rhs),
+            TokenKind::LessEqual => lhs.le(&rhs),
+            TokenKind::EqualEqual => lhs.eq(&rhs),
+            TokenKind::NotEqual => Ok(!lhs.eq(&rhs)?),
+            _ => panic!("unsupported binary operation {op:?}"),
         }
-        Expr::LogicalOp(logicalop) => {
-            // first interpret and check left-hand side to allow
-            // for short-circuiting
-            let lhs = expr(logicalop.lhs())?;
-            match logicalop.operator().kind() {
-                TokenKind::And => {
-                    if !bool::from(&lhs) {
-                        return Ok(Type::Bool {
-                            value: false,
-                            line: lhs.line(),
-                        });
-                    }
-                    let rhs = expr(logicalop.rhs())?;
-                    Ok(Type::Bool {
-                        value: bool::from(&rhs),
+    }
+
+    fn visit_logical(&mut self, op: &LogicalOp) -> Result<Type, RuntimeError> {
+        // First interpret and check left-hand side to allow for short-circuiting
+        let lhs = op.lhs().accept(self)?;
+        match op.operator().kind() {
+            TokenKind::And => {
+                if !bool::from(&lhs) {
+                    return Ok(Type::Bool {
+                        value: false,
                         line: lhs.line(),
-                    })
+                    });
                 }
-                TokenKind::Or => {
-                    if bool::from(&lhs) {
-                        return Ok(Type::Bool { value: true, line: lhs.line() });
-                    }
-                    let rhs = expr(logicalop.rhs())?;
-                    Ok(Type::Bool {
-                        value: bool::from(&rhs),
-                        line: lhs.line(),
-                    })
-                }
-                _ => panic!("unsupported logical operation {logicalop:?}"),
+                let rhs = op.rhs().accept(self)?;
+                Ok(Type::Bool {
+                    value: bool::from(&rhs),
+                    line: lhs.line(),
+                })
             }
+            TokenKind::Or => {
+                if bool::from(&lhs) {
+                    return Ok(Type::Bool { value: true, line: lhs.line() });
+                }
+                let rhs = op.rhs().accept(self)?;
+                Ok(Type::Bool {
+                    value: bool::from(&rhs),
+                    line: lhs.line(),
+                })
+            }
+            _ => panic!("unsupported logical operation {op:?}"),
         }
     }
 }
 
-pub fn interpret(stmts: &Stmts) -> Result<(), RuntimeError> {
-    for stmt in stmts.stmts() {
-        match stmt {
-            Stmt::Print(stmt) => print!("{}", expr(stmt.expr())?),
-            Stmt::Println(stmt) => println!("{}", expr(stmt.expr())?),
-            Stmt::If(stmt) => {
-                let test = expr(stmt.test())?;
-                let Type::Bool { value, .. } = test else {
-                    return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
-                };
-                if value {
-                    interpret(stmt.then())?;
-                } else if let Some(r#else) = stmt.r#else() {
-                    interpret(r#else)?;
-                }
-            }
-        }
+impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
+    fn visit_print(&mut self, p: &Print) -> Result<(), RuntimeError> {
+        let value = p.expr().accept(self)?;
+        print!("{value}");
+        Ok(())
     }
-    Ok(())
+
+    fn visit_println(&mut self, p: &Println) -> Result<(), RuntimeError> {
+        let value = p.expr().accept(self)?;
+        println!("{value}");
+        Ok(())
+    }
+
+    fn visit_if(&mut self, i: &If) -> Result<(), RuntimeError> {
+        let test = i.test().accept(self)?;
+        let Type::Bool { value, .. } = test else {
+            return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
+        };
+        if value {
+            self.interpret(i.then())?;
+        } else if let Some(r#else) = i.r#else() {
+            self.interpret(r#else)?;
+        }
+        Ok(())
+    }
+}
+
+/// Evaluate a single expression.
+pub fn expr(ast: &Expr) -> Result<Type, RuntimeError> {
+    let mut interpreter = Interpreter::new();
+    ast.accept(&mut interpreter)
+}
+
+/// Interpret a list of statements.
+pub fn interpret(stmts: &Stmts) -> Result<(), RuntimeError> {
+    let mut interpreter = Interpreter::new();
+    interpreter.interpret(stmts)
 }

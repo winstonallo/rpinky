@@ -228,7 +228,7 @@ impl Parser {
         Ok(Stmt::Println(Println::new(self.expr()?)))
     }
 
-    /// ```
+    /// ```ignore
     /// <if_stmt> ::= 'if' <expr> 'then' <stmts>
     ///     ( 'elif' <expr> 'then' stmts )*
     ///     ( 'else' <stmts> )? 'end'
@@ -257,7 +257,7 @@ impl Parser {
         Ok(Stmt::If(If::new(test, then, r#else)))
     }
 
-    /// ```
+    /// ```ignore
     /// stmt ::= expr_stmt
     ///     | print_stmt
     ///     | assign
