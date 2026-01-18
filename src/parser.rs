@@ -208,6 +208,7 @@ impl Parser {
         self.or()
     }
 
+    /// `<print_stmt> ::= 'print' expr`
     fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
         debug_assert!(
             self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)),
@@ -217,6 +218,7 @@ impl Parser {
         Ok(Stmt::Print(Print::new(self.expr()?)))
     }
 
+    /// `<print_stmt> ::= 'print' expr`
     fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
         debug_assert!(
             self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)),
@@ -226,6 +228,11 @@ impl Parser {
         Ok(Stmt::Println(Println::new(self.expr()?)))
     }
 
+    /// ```
+    /// <if_stmt> ::= 'if' <expr> 'then' <stmts>
+    ///     ( 'elif' <expr> 'then' stmts )*
+    ///     ( 'else' <stmts> )? 'end'
+    /// ```
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
         debug_assert!(self.match_curr(|tok| matches!(tok.kind(), TokenKind::If)), "called if_stmt without 'if' token");
 
@@ -250,8 +257,20 @@ impl Parser {
         Ok(Stmt::If(If::new(test, then, r#else)))
     }
 
+    /// ```
+    /// stmt ::= expr_stmt
+    ///     | print_stmt
+    ///     | assign
+    ///     | local_assign
+    ///     | println_stmt
+    ///     | if_stmt
+    ///     | while_stmt
+    ///     | for_stmt
+    ///     | func_decl
+    ///     | func_call
+    ///     | ret_stmt
+    /// ```
     fn stmt(&mut self) -> Result<Stmt, ParseError> {
-        // the next token predicts the next statement
         let token = self.peek();
 
         match token.kind() {
