@@ -14,27 +14,33 @@ impl Parser {
         Self { tokens, curr: 0 }
     }
 
+    /// Consume and return the current token.
     fn advance(&mut self) -> &Token {
         debug_assert!(self.curr < self.tokens.len(), "called advance when tokens were already exhausted");
+
         let tok = &self.tokens[self.curr];
         self.curr += 1;
         tok
     }
 
+    /// Return the current token.
     fn peek(&self) -> Token {
         debug_assert!(self.curr < self.tokens.len(), "called peek when tokens where already exhausted");
+
         (self.tokens[self.curr]).clone()
     }
 
+    /// Check `predicate` against the current token.
     fn is_next<F: Fn(&Token) -> bool>(&self, predicate: F) -> bool {
         debug_assert!(self.curr < self.tokens.len(), "called is_next when tokens where already exhausted");
+
         predicate(&self.peek())
     }
 
+    /// Consume the current token if `predicate(current)` is true.
     fn match_curr<F: Fn(&Token) -> bool>(&mut self, predicate: F) -> bool {
-        if self.curr >= self.tokens.len() {
-            return false;
-        }
+        debug_assert!(self.curr < self.tokens.len(), "called match_curr when tokens where already exhausted");
+
         if !predicate(&self.peek()) {
             return false;
         }
@@ -42,8 +48,10 @@ impl Parser {
         true
     }
 
+    /// Return the previous token.
     fn previous_token(&self) -> Token {
         debug_assert!(self.curr > 0, "called previous_token while at position 0");
+
         (self.tokens[self.curr - 1]).clone()
     }
 
