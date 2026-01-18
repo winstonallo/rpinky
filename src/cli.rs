@@ -2,11 +2,11 @@
 pub struct Arguments {
     input_file: String,
 
-    #[arg(long, help = "Dump AST to stdout after parsing")]
-    ast_dump: bool,
-
     #[arg(long, help = "Dump tokens to stdout after lexing")]
     token_dump: bool,
+
+    #[arg(long, help = "Dump AST to stdout after parsing")]
+    ast_dump: bool,
 }
 
 impl Arguments {
