@@ -16,21 +16,21 @@ pub fn dump_expr(expr: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Opti
         Expr::UnOp(unop) => {
             writeln!(f, "{}UnOp {{", " ".repeat(indentation))?;
             writeln!(f, "{}{:?}", " ".repeat(indentation + 2), unop.operator())?;
-            dump_expr(&unop.operand(), f, Some(indentation + 2))?;
+            dump_expr(unop.operand(), f, Some(indentation + 2))?;
             writeln!(f, "{}}}", " ".repeat(indentation))
         }
         Expr::BinOp(binop) => {
             writeln!(f, "{}BinOp {{", " ".repeat(indentation))?;
-            dump_expr(&binop.lhs(), f, Some(indentation + 2))?;
+            dump_expr(binop.lhs(), f, Some(indentation + 2))?;
             writeln!(f, "{}{:?}", " ".repeat(indentation + 2), binop.operator())?;
-            dump_expr(&binop.rhs(), f, Some(indentation + 2))?;
+            dump_expr(binop.rhs(), f, Some(indentation + 2))?;
             writeln!(f, "{}}}", " ".repeat(indentation))
         }
         Expr::LogicalOp(logicalop) => {
             writeln!(f, "{}LogicalOp {{", " ".repeat(indentation))?;
-            dump_expr(&logicalop.lhs(), f, Some(indentation + 2))?;
+            dump_expr(logicalop.lhs(), f, Some(indentation + 2))?;
             writeln!(f, "{}{:?}", " ".repeat(indentation + 2), logicalop.operator())?;
-            dump_expr(&logicalop.rhs(), f, Some(indentation + 2))?;
+            dump_expr(logicalop.rhs(), f, Some(indentation + 2))?;
             writeln!(f, "{}}}", " ".repeat(indentation))
         }
     }
@@ -42,7 +42,7 @@ pub fn dump_stmt(stmt: &Stmt, f: &mut std::fmt::Formatter<'_>, indentation: Opti
     match stmt {
         Stmt::If(stmt) => {
             writeln!(f, "{}if", " ".repeat(indentation))?;
-            dump_expr(&stmt.test(), f, Some(indentation + 2))?;
+            dump_expr(stmt.test(), f, Some(indentation + 2))?;
             writeln!(f, "{}then", " ".repeat(indentation))?;
             dump_stmts(stmt.then(), f, Some(indentation + 2))?;
             if let Some(elsee) = stmt.r#else() {

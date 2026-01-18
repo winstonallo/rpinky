@@ -152,7 +152,7 @@ impl<'src> Lexer<'src> {
         } else {
             self.tokens.push(Token::new(
                 TokenKind::Identifier {
-                    lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
+                    lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
                 },
                 self.line,
             ));
@@ -175,7 +175,7 @@ impl<'src> Lexer<'src> {
             }
             self.tokens.push(Token::new(
                 TokenKind::FloatLiteral {
-                    lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
+                    lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
                 },
                 self.line,
             ));
@@ -185,7 +185,7 @@ impl<'src> Lexer<'src> {
             }
             self.tokens.push(Token::new(
                 TokenKind::IntegerLiteral {
-                    lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
+                    lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
                 },
                 self.line,
             ));
@@ -203,7 +203,7 @@ impl<'src> Lexer<'src> {
         self.advance();
         self.tokens.push(Token::new(
             TokenKind::StringLiteral {
-                lexeme: Lexeme::new((&self.source[self.start..self.curr]).to_vec()),
+                lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
             },
             self.line,
         ));

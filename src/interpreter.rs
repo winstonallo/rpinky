@@ -26,7 +26,7 @@ impl TryFrom<&Type> for f64 {
 impl Type {
     pub fn pow(&self, rhs: Type) -> Result<Type, RuntimeError> {
         if matches!(self, Type::String { .. }) || matches!(rhs, Type::String { .. }) {
-            return Err(RuntimeError::new(format!("exponentiation is not implemented for string"), self.line()));
+            return Err(RuntimeError::new("exponentiation is not implemented for string".into(), self.line()));
         }
         let lhs = f64::try_from(self)?;
         let rhs = f64::try_from(&rhs)?;
@@ -43,6 +43,7 @@ impl Type {
     }
 
     // Need to implement `cmp` like this because `std::cmd::Ordering` does not support returning a `Result`.
+    #[allow(clippy::should_implement_trait)]
     pub fn cmp(&self, rhs: &Self) -> Result<std::cmp::Ordering, RuntimeError> {
         match (self, rhs) {
             (Type::Bool { value: lhs, .. }, Type::Bool { value: rhs, .. }) => Ok(lhs.cmp(rhs)),
@@ -68,28 +69,28 @@ impl Type {
 
     pub fn gt(&self, rhs: &Self) -> Result<Type, RuntimeError> {
         Ok(Type::Bool {
-            value: self.cmp(&rhs)?.is_gt(),
+            value: self.cmp(rhs)?.is_gt(),
             line: self.line(),
         })
     }
 
     pub fn ge(&self, rhs: &Self) -> Result<Type, RuntimeError> {
         Ok(Type::Bool {
-            value: self.cmp(&rhs)?.is_ge(),
+            value: self.cmp(rhs)?.is_ge(),
             line: self.line(),
         })
     }
 
     pub fn lt(&self, rhs: &Self) -> Result<Type, RuntimeError> {
         Ok(Type::Bool {
-            value: self.cmp(&rhs)?.is_lt(),
+            value: self.cmp(rhs)?.is_lt(),
             line: self.line(),
         })
     }
 
     pub fn le(&self, rhs: &Self) -> Result<Type, RuntimeError> {
         Ok(Type::Bool {
-            value: self.cmp(&rhs)?.is_le(),
+            value: self.cmp(rhs)?.is_le(),
             line: self.line(),
         })
     }

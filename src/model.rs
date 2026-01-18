@@ -170,7 +170,7 @@ pub struct StringType {
     line: usize,
 }
 
-impl<'src> TryFrom<&Token> for StringType {
+impl TryFrom<&Token> for StringType {
     type Error = ParseError;
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {

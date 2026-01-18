@@ -8,19 +8,13 @@ fn main() {
 
     let source = match std::fs::read_to_string(args.input_file()) {
         Ok(s) => s,
-        Err(e) => {
-            eprintln!("{} couldn't read '{}': {e}", "error:".red().bold(), args.input_file());
-            return;
-        }
+        Err(e) => return eprintln!("{} couldn't read '{}': {e}", "error:".red().bold(), args.input_file()),
     };
 
     let mut lexer = Lexer::new(source.as_bytes());
     let tokens = match lexer.tokenize() {
         Ok(t) => t,
-        Err(e) => {
-            eprintln!("{e}");
-            return;
-        }
+        Err(e) => return eprintln!("{e}"),
     };
 
     if args.token_dump() {
@@ -34,10 +28,7 @@ fn main() {
 
     let ast = match parser.parse() {
         Ok(a) => a,
-        Err(e) => {
-            eprintln!("{e}");
-            return;
-        }
+        Err(e) => return eprintln!("{e}"),
     };
 
     if args.ast_dump() {
@@ -46,9 +37,6 @@ fn main() {
 
     match interpreter::interpret(&ast) {
         Ok(..) => (),
-        Err(e) => {
-            eprintln!("{e}");
-            return;
-        }
+        Err(e) => eprintln!("{e}"),
     };
 }
