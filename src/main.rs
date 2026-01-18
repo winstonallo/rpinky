@@ -1,10 +1,10 @@
 use clap::Parser as _;
 use colored::Colorize;
 
-use cpinky::{interpreter, lexer::Lexer, parser::Parser};
+use rpinky::{interpreter, lexer::Lexer, parser::Parser};
 
 fn main() {
-    let args = cpinky::cli::Arguments::parse();
+    let args = rpinky::cli::Arguments::parse();
 
     let source = match std::fs::read_to_string(args.input_file()) {
         Ok(s) => s,

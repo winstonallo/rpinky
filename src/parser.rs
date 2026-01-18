@@ -203,7 +203,7 @@ impl Parser {
         Ok(expr)
     }
 
-    /// Evaluates an expression in the form of an AST.
+    /// Creates an AST representation of an expression.
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         self.or()
     }
@@ -227,9 +227,7 @@ impl Parser {
     }
 
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
-        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::If)) {
-            return Err(ParseError::new("expected token 'if'".into(), self.previous_token().line()));
-        }
+        debug_assert!(self.match_curr(|tok| matches!(tok.kind(), TokenKind::If)), "called if_stmt without 'if' token");
 
         let test = self.expr()?;
 
