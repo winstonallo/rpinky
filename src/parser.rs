@@ -1,8 +1,8 @@
 use crate::{
     errors::ParseError,
     model::{
-        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, Identifier, If, IntegerLiteral, LogicalOp, Print, Println, Stmt, Stmts, StringLiteral, UnOp,
-        While,
+        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, Identifier, If, IntegerLiteral, LogicalOp, Print, Println, Stmt, Stmts, StringLiteral,
+        UnOp, While,
     },
     tokens::{Token, TokenKind},
 };
@@ -247,7 +247,10 @@ impl Parser {
         let test = self.expr()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Then)) {
-            return Err(ParseError::new("expected token 'then'".into(), self.previous_token().line()));
+            return Err(ParseError::new(
+                "expected token 'then' before if statement body".into(),
+                self.previous_token().line(),
+            ));
         }
 
         let then = self.stmts()?;
@@ -257,7 +260,10 @@ impl Parser {
             let test = self.expr()?;
 
             if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Then)) {
-                return Err(ParseError::new("expected token 'then'".into(), self.previous_token().line()));
+                return Err(ParseError::new(
+                    "expected token 'then' before elif statement body".into(),
+                    self.previous_token().line(),
+                ));
             }
 
             elif.push(Elif::new(test, self.stmts()?));
@@ -270,7 +276,10 @@ impl Parser {
         };
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
-            return Err(ParseError::new("expected token 'end'".into(), self.previous_token().line()));
+            return Err(ParseError::new(
+                "expected token 'end' after statement body".into(),
+                self.previous_token().line(),
+            ));
         }
 
         Ok(Stmt::If(If::new(test, then, elif, r#else)))
@@ -286,16 +295,64 @@ impl Parser {
         let test = self.expr()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
-            return Err(ParseError::new("expected token 'do'".into(), self.previous_token().line()));
+            return Err(ParseError::new(
+                "expected token 'do' before while loop body".into(),
+                self.previous_token().line(),
+            ));
         }
 
         let body = self.stmts()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
-            return Err(ParseError::new("expected token 'end'".into(), self.previous_token().line()));
+            return Err(ParseError::new(
+                "expected token 'end' after while loop body".into(),
+                self.previous_token().line(),
+            ));
         }
 
         Ok(Stmt::While(While::new(test, body)))
+    }
+
+    /// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
+    fn for_stmt(&mut self) -> Result<Stmt, ParseError> {
+        debug_assert!(
+            self.match_curr(|tok| matches!(tok.kind(), TokenKind::For)),
+            "called for_stmt without 'while' token"
+        );
+
+        let lhs = self.expr()?;
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
+            return Err(ParseError::new("expected assignment after 'for' token".into(), self.previous_token().line()));
+        }
+        let rhs = self.expr()?;
+        let start = Assignment::new(lhs, rhs);
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
+            return Err(ParseError::new(
+                "expected ',' after for loop initialization statement".into(),
+                self.previous_token().line(),
+            ));
+        }
+
+        let end = self.expr()?;
+
+        let mut step = None;
+
+        if self.is_next(|tok| matches!(tok.kind(), TokenKind::Comma)) {
+            self.advance();
+            step = Some(self.expr()?);
+        }
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
+            return Err(ParseError::new("expected token 'do' before for loop body".into(), self.previous_token().line()));
+        }
+
+        let body = self.stmts()?;
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
+            return Err(ParseError::new("expected token 'end' after for loop body".into(), self.previous_token().line()));
+        }
+
+        Ok(Stmt::For(For::new(start, end, step, body)))
     }
 
     /// ```ignore
@@ -319,6 +376,7 @@ impl Parser {
             TokenKind::Println => self.println_stmt(),
             TokenKind::If => self.if_stmt(),
             TokenKind::While => self.while_stmt(),
+            TokenKind::For => self.for_stmt(),
             _ => {
                 let lhs = self.expr()?;
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {

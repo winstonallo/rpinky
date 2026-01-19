@@ -48,6 +48,7 @@ pub enum Stmt {
     If(If),
     Assignment(Assignment),
     While(While),
+    For(For),
 }
 
 impl Stmt {
@@ -58,6 +59,7 @@ impl Stmt {
             Stmt::If(i) => visitor.visit_if(i),
             Stmt::Assignment(a) => visitor.visit_assignment(a),
             Stmt::While(w) => visitor.visit_while(w),
+            Stmt::For(f) => visitor.visit_for(f),
         }
     }
 }
@@ -451,6 +453,37 @@ impl While {
 
     pub fn test(&self) -> &Expr {
         &self.test
+    }
+
+    pub fn body(&self) -> &Stmts {
+        &self.body
+    }
+}
+
+/// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
+#[derive(Clone, Debug)]
+pub struct For {
+    start: Assignment,
+    end: Expr,
+    step: Option<Expr>,
+    body: Stmts,
+}
+
+impl For {
+    pub fn new(start: Assignment, end: Expr, step: Option<Expr>, body: Stmts) -> Self {
+        Self { start, end, step, body }
+    }
+
+    pub fn start(&self) -> &Assignment {
+        &self.start
+    }
+
+    pub fn end(&self) -> &Expr {
+        &self.end
+    }
+
+    pub fn step(&self) -> &Option<Expr> {
+        &self.step
     }
 
     pub fn body(&self) -> &Stmts {

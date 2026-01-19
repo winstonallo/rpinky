@@ -45,6 +45,11 @@ impl Environment {
         }
     }
 
+    /// Assign in the local scope
+    pub fn assign_local(&mut self, identifier: String, value: Type) {
+        self.vars.insert(identifier, value);
+    }
+
     pub fn parent(&self) -> Option<Rc<RefCell<Self>>> {
         self.parent.clone()
     }

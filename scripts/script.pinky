@@ -1,7 +1,6 @@
-x := 1
+x := 1000
 
-while x <= 15 do
-
+for x := 1, 15, 2 do
     if x % 3 == 0 and x % 5 == 0 then
         println "FIZZBUZZ"
     elif x % 3 == 0 then
@@ -11,6 +10,10 @@ while x <= 15 do
     else
         println x
     end
-
-    x := x + 1
 end
+
+if 1 == 1 then
+    println x
+end
+
+println x

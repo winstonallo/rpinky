@@ -460,6 +460,36 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         }
         Ok(())
     }
+
+    fn visit_for(&mut self, f: &model::For) -> Result<(), RuntimeError> {
+        let mut fork = self.fork();
+
+        let mut rvalue = f.start().rhs().accept(&mut fork)?.clone();
+        let model::Expr::Identifier(i) = f.start().lhs() else {
+            return Err(RuntimeError::new(format!("cannot assign to {:?}", f.start().lhs()), rvalue.line()));
+        };
+
+        fork.environment().borrow_mut().assign_local(i.name().into(), rvalue.clone());
+
+        let end = f.end().accept(&mut fork)?;
+
+        let mut step = Type::Number { value: 1.0, line: i.line() };
+
+        if let Some(s) = f.step() {
+            step = s.accept(&mut fork)?;
+        }
+
+        while let Ok(Type::Bool { value: true, .. }) = end.ge(&rvalue) {
+            fork.interpret(f.body())?;
+            fork.environment().borrow_mut().assign_local(i.name().into(), rvalue.clone());
+            rvalue = match rvalue + step.clone() {
+                Ok(rv) => rv,
+                Err(..) => panic!("no"),
+            };
+        }
+
+        Ok(())
+    }
 }
 
 /// Evaluate a single expression.

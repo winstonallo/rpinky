@@ -157,6 +157,32 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.dedent();
         writeln!(self.f, "{}end", self.indent())
     }
+
+    fn visit_for(&mut self, f: &crate::model::For) -> std::fmt::Result {
+        writeln!(self.f, "{}for", self.indent())?;
+        self.indented();
+        writeln!(self.f, "{}assignment{{", self.indent())?;
+        self.indented();
+        f.start().lhs().accept(self)?;
+        writeln!(self.f, "{}:=", self.indent())?;
+        f.start().rhs().accept(self)?;
+        self.dedent();
+        writeln!(self.f, "{}}}", self.indent())?;
+        writeln!(self.f, "{}to", self.indent())?;
+        f.end().accept(self)?;
+        writeln!(self.f, "{}stepby", self.indent())?;
+        if let Some(s) = f.step() {
+            s.accept(self)?;
+        }
+
+        self.dedent();
+        writeln!(self.f, "{}do", self.indent())?;
+
+        self.indented();
+        self.print_stmts(f.body())?;
+        self.dedent();
+        writeln!(self.f, "{}end", self.indent())
+    }
 }
 
 pub fn dump_expr(expr: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
