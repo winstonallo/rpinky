@@ -144,6 +144,19 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
 
         Ok(())
     }
+
+    fn visit_while(&mut self, w: &crate::model::While) -> std::fmt::Result {
+        writeln!(self.f, "{}while", self.indent())?;
+        self.indented();
+        w.test().accept(self)?;
+        self.dedent();
+        writeln!(self.f, "{}do", self.indent())?;
+
+        self.indented();
+        self.print_stmts(w.body())?;
+        self.dedent();
+        writeln!(self.f, "{}end", self.indent())
+    }
 }
 
 pub fn dump_expr(expr: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {

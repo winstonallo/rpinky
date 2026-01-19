@@ -1,6 +1,5 @@
 use crate::model;
 
-/// Visitor trait for expression nodes.
 pub trait ExprVisitor<T> {
     fn visit_integer(&mut self, n: &model::Integer) -> T;
     fn visit_float(&mut self, f: &model::Float) -> T;
@@ -13,10 +12,10 @@ pub trait ExprVisitor<T> {
     fn visit_identifier(&mut self, i: &model::Identifier) -> T;
 }
 
-/// Visitor trait for statement nodes.
 pub trait StmtVisitor<T> {
     fn visit_print(&mut self, p: &model::Print) -> T;
     fn visit_println(&mut self, p: &model::Println) -> T;
     fn visit_if(&mut self, i: &model::If) -> T;
     fn visit_assignment(&mut self, a: &model::Assignment) -> T;
+    fn visit_while(&mut self, w: &model::While) -> T;
 }

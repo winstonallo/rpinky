@@ -1,6 +1,6 @@
 use crate::{
     errors::ParseError,
-    model::{Assignment, BinOp, Bool, Expr, Float, Identifier, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
+    model::{Assignment, BinOp, Bool, Expr, Float, Identifier, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp, While},
     tokens::{Token, TokenKind},
 };
 
@@ -262,6 +262,28 @@ impl Parser {
         Ok(Stmt::If(If::new(test, then, r#else)))
     }
 
+    /// `<while> ::= 'while' <expr> 'do' <stmts> 'end'`
+    fn while_stmt(&mut self) -> Result<Stmt, ParseError> {
+        debug_assert!(
+            self.match_curr(|tok| matches!(tok.kind(), TokenKind::While)),
+            "called while_stmt without 'while' token"
+        );
+
+        let test = self.expr()?;
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
+            return Err(ParseError::new("expected token 'do'".into(), self.previous_token().line()));
+        }
+
+        let body = self.stmts()?;
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
+            return Err(ParseError::new("expected token 'end'".into(), self.previous_token().line()));
+        }
+
+        Ok(Stmt::While(While::new(test, body)))
+    }
+
     /// ```ignore
     /// stmt ::= expr_stmt
     ///     | print_stmt
@@ -282,10 +304,7 @@ impl Parser {
             TokenKind::Print => self.print_stmt(),
             TokenKind::Println => self.println_stmt(),
             TokenKind::If => self.if_stmt(),
-            // assigment:
-            // lhs
-            // if next == ':='
-            //      return assigment
+            TokenKind::While => self.while_stmt(),
             _ => {
                 let lhs = self.expr()?;
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {

@@ -47,6 +47,7 @@ pub enum Stmt {
     Println(Println),
     If(If),
     Assignment(Assignment),
+    While(While),
 }
 
 impl Stmt {
@@ -56,6 +57,7 @@ impl Stmt {
             Stmt::Println(p) => visitor.visit_println(p),
             Stmt::If(i) => visitor.visit_if(i),
             Stmt::Assignment(a) => visitor.visit_assignment(a),
+            Stmt::While(w) => visitor.visit_while(w),
         }
     }
 }
@@ -331,9 +333,6 @@ impl Identifier {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct While {}
-
 /// `<assign> ::= <identifier> ':=' <expr>`
 #[derive(Clone, Debug)]
 pub struct Assignment {
@@ -410,5 +409,26 @@ impl If {
 
     pub fn r#else(&self) -> &Option<Stmts> {
         &self.r#else
+    }
+}
+
+/// `<while> ::= 'while' <expr> 'do' <stmts> 'end'`
+#[derive(Clone, Debug)]
+pub struct While {
+    test: Expr,
+    body: Stmts,
+}
+
+impl While {
+    pub fn new(test: Expr, body: Stmts) -> Self {
+        Self { test, body }
+    }
+
+    pub fn test(&self) -> &Expr {
+        &self.test
+    }
+
+    pub fn body(&self) -> &Stmts {
+        &self.body
     }
 }

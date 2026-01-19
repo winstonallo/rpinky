@@ -439,6 +439,14 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         self.environment().borrow_mut().assign(i.name().into(), rvalue);
         Ok(())
     }
+
+    fn visit_while(&mut self, w: &model::While) -> Result<(), RuntimeError> {
+        let mut fork = self.fork();
+        while let Ok(Type::Bool { value: true, .. }) = w.test().accept(&mut fork) {
+            fork.interpret(w.body())?;
+        }
+        Ok(())
+    }
 }
 
 /// Evaluate a single expression.
