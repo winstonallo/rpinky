@@ -1,5 +1,5 @@
 use crate::{
-    model::{BinOp, Bool, Expr, Float, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp},
+    model::{BinOp, BoolLiteral, Expr, FloatLiteral, If, IntegerLiteral, LogicalOp, Print, Println, Stmt, Stmts, StringLiteral, UnOp},
     visitor::{ExprVisitor, StmtVisitor},
 };
 
@@ -40,24 +40,24 @@ impl<'a, 'b> AstPrinter<'a, 'b> {
 }
 
 impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
-    fn visit_integer(&mut self, n: &Integer) -> std::fmt::Result {
+    fn visit_integer(&mut self, n: &IntegerLiteral) -> std::fmt::Result {
         writeln!(self.f, "{}{n:?}", self.indent())
     }
 
-    fn visit_float(&mut self, n: &Float) -> std::fmt::Result {
+    fn visit_float(&mut self, n: &FloatLiteral) -> std::fmt::Result {
         writeln!(self.f, "{}{n:?}", self.indent())
     }
 
-    fn visit_string(&mut self, s: &StringType) -> std::fmt::Result {
+    fn visit_string(&mut self, s: &StringLiteral) -> std::fmt::Result {
         writeln!(self.f, "{}{s:?}", self.indent())
     }
 
-    fn visit_bool(&mut self, b: &Bool) -> std::fmt::Result {
+    fn visit_bool(&mut self, b: &BoolLiteral) -> std::fmt::Result {
         writeln!(self.f, "{}{b:?}", self.indent())
     }
 
     fn visit_grouping(&mut self, inner: &Expr) -> std::fmt::Result {
-        writeln!(self.f, "{}Grouping (", self.indent())?;
+        writeln!(self.f, "{}grouping (", self.indent())?;
         self.indented();
         inner.accept(self)?;
         self.dedent();
@@ -65,7 +65,7 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_unop(&mut self, op: &UnOp) -> std::fmt::Result {
-        writeln!(self.f, "{}UnOp {{", self.indent())?;
+        writeln!(self.f, "{}unop {{", self.indent())?;
         self.indented();
         writeln!(self.f, "{}{:?}", self.indent(), op.operator())?;
         op.operand().accept(self)?;
@@ -74,7 +74,7 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_binop(&mut self, op: &BinOp) -> std::fmt::Result {
-        writeln!(self.f, "{}BinOp {{", self.indent())?;
+        writeln!(self.f, "{}binop {{", self.indent())?;
         self.indented();
         op.lhs().accept(self)?;
         writeln!(self.f, "{}{:?}", self.indent(), op.operator())?;
@@ -84,7 +84,7 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_logical(&mut self, op: &LogicalOp) -> std::fmt::Result {
-        writeln!(self.f, "{}LogicalOp {{", self.indent())?;
+        writeln!(self.f, "{}logical {{", self.indent())?;
         self.indented();
         op.lhs().accept(self)?;
         writeln!(self.f, "{}{:?}", self.indent(), op.operator())?;
@@ -94,7 +94,7 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_identifier(&mut self, i: &crate::model::Identifier) -> std::fmt::Result {
-        writeln!(self.f, "{}Identifier {{ {} }}", self.indent(), i.name())
+        writeln!(self.f, "{}identifier {{ {} }}", self.indent(), i.name())
     }
 }
 

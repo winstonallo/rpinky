@@ -263,6 +263,7 @@ pub fn match_reserved_keyword(token: &[u8], line: usize) -> Option<Token> {
         b"print" => Some(Token::new(TokenKind::Print, line)),
         b"println" => Some(Token::new(TokenKind::Println, line)),
         b"ret" => Some(Token::new(TokenKind::Ret, line)),
+        b"elif" => Some(Token::new(TokenKind::Elif, line)),
         _ => None,
     }
 }

@@ -1,10 +1,10 @@
 use crate::model;
 
 pub trait ExprVisitor<T> {
-    fn visit_integer(&mut self, n: &model::Integer) -> T;
-    fn visit_float(&mut self, f: &model::Float) -> T;
-    fn visit_string(&mut self, s: &model::StringType) -> T;
-    fn visit_bool(&mut self, b: &model::Bool) -> T;
+    fn visit_integer(&mut self, n: &model::IntegerLiteral) -> T;
+    fn visit_float(&mut self, f: &model::FloatLiteral) -> T;
+    fn visit_string(&mut self, s: &model::StringLiteral) -> T;
+    fn visit_bool(&mut self, b: &model::BoolLiteral) -> T;
     fn visit_grouping(&mut self, inner: &model::Expr) -> T;
     fn visit_unop(&mut self, op: &model::UnOp) -> T;
     fn visit_binop(&mut self, op: &model::BinOp) -> T;

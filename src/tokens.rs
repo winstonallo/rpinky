@@ -100,6 +100,7 @@ pub enum TokenKind {
     // Keywords
     If,
     Then,
+    Elif,
     Else,
     True,
     False,
@@ -154,6 +155,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::FloatLiteral { lexeme } => write!(f, "float literal: {lexeme}"),
             TokenKind::If => write!(f, "keyword: if"),
             TokenKind::Then => write!(f, "keyword: then"),
+            TokenKind::Elif => write!(f, "keyword: elif"),
             TokenKind::Else => write!(f, "keyword: else"),
             TokenKind::True => write!(f, "keyword: true"),
             TokenKind::False => write!(f, "keyword: false"),

@@ -14,13 +14,13 @@ pub enum Node {
 /// Evaluates to a result
 #[derive(Clone)]
 pub enum Expr {
-    Integer(Integer),
-    Float(Float),
+    Integer(IntegerLiteral),
+    Float(FloatLiteral),
     Grouping(Box<Expr>),
     UnOp(UnOp),
     BinOp(BinOp),
-    String(StringType),
-    Bool(Bool),
+    String(StringLiteral),
+    Bool(BoolLiteral),
     LogicalOp(LogicalOp),
     Identifier(Identifier),
 }
@@ -96,12 +96,12 @@ impl std::fmt::Debug for Stmts {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Integer {
+pub struct IntegerLiteral {
     value: f64,
     line: usize,
 }
 
-impl TryFrom<&Token> for Integer {
+impl TryFrom<&Token> for IntegerLiteral {
     type Error = ParseError;
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
@@ -118,7 +118,7 @@ impl TryFrom<&Token> for Integer {
     }
 }
 
-impl Integer {
+impl IntegerLiteral {
     pub fn value(&self) -> f64 {
         self.value
     }
@@ -129,12 +129,12 @@ impl Integer {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Float {
+pub struct FloatLiteral {
     value: f64,
     line: usize,
 }
 
-impl TryFrom<&Token> for Float {
+impl TryFrom<&Token> for FloatLiteral {
     type Error = ParseError;
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
@@ -151,7 +151,7 @@ impl TryFrom<&Token> for Float {
     }
 }
 
-impl Float {
+impl FloatLiteral {
     pub fn value(&self) -> f64 {
         self.value
     }
@@ -162,12 +162,12 @@ impl Float {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Bool {
+pub struct BoolLiteral {
     value: bool,
     line: usize,
 }
 
-impl TryFrom<&Token> for Bool {
+impl TryFrom<&Token> for BoolLiteral {
     type Error = ParseError;
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
@@ -182,7 +182,7 @@ impl TryFrom<&Token> for Bool {
     }
 }
 
-impl Bool {
+impl BoolLiteral {
     pub fn new(value: bool, line: usize) -> Self {
         Self { value, line }
     }
@@ -197,12 +197,12 @@ impl Bool {
 }
 
 #[derive(Debug, Clone)]
-pub struct StringType {
+pub struct StringLiteral {
     value: String,
     line: usize,
 }
 
-impl TryFrom<&Token> for StringType {
+impl TryFrom<&Token> for StringLiteral {
     type Error = ParseError;
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
@@ -218,7 +218,7 @@ impl TryFrom<&Token> for StringType {
     }
 }
 
-impl StringType {
+impl StringLiteral {
     pub fn new(value: String, line: usize) -> Self {
         Self { value, line }
     }
@@ -386,17 +386,15 @@ impl Println {
     }
 }
 
-/// `'if' <expr> 'then' <stmts> ( 'else' <stmts> )? 'end' `
 #[derive(Clone, Debug)]
-pub struct If {
+pub struct Elif {
     test: Expr,
     then: Stmts,
-    r#else: Option<Stmts>,
 }
 
-impl If {
-    pub fn new(test: Expr, then: Stmts, r#else: Option<Stmts>) -> Self {
-        Self { test, then, r#else }
+impl Elif {
+    pub fn new(test: Expr, then: Stmts) -> Self {
+        Self { test, then }
     }
 
     pub fn test(&self) -> &Expr {
@@ -405,6 +403,33 @@ impl If {
 
     pub fn then(&self) -> &Stmts {
         &self.then
+    }
+}
+
+/// `'if' <expr> 'then' <stmts> ( 'else' <stmts> )? 'end' `
+#[derive(Clone, Debug)]
+pub struct If {
+    test: Expr,
+    then: Stmts,
+    elif: Vec<Elif>,
+    r#else: Option<Stmts>,
+}
+
+impl If {
+    pub fn new(test: Expr, then: Stmts, elif: Vec<Elif>, r#else: Option<Stmts>) -> Self {
+        Self { test, then, elif, r#else }
+    }
+
+    pub fn test(&self) -> &Expr {
+        &self.test
+    }
+
+    pub fn then(&self) -> &Stmts {
+        &self.then
+    }
+
+    pub fn elif(&self) -> &Vec<Elif> {
+        &self.elif
     }
 
     pub fn r#else(&self) -> &Option<Stmts> {

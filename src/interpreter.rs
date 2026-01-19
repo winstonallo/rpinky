@@ -299,28 +299,28 @@ impl Interpreter {
 }
 
 impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
-    fn visit_integer(&mut self, n: &model::Integer) -> Result<Type, RuntimeError> {
+    fn visit_integer(&mut self, n: &model::IntegerLiteral) -> Result<Type, RuntimeError> {
         Ok(Type::Number {
             value: n.value(),
             line: n.line(),
         })
     }
 
-    fn visit_float(&mut self, f: &model::Float) -> Result<Type, RuntimeError> {
+    fn visit_float(&mut self, f: &model::FloatLiteral) -> Result<Type, RuntimeError> {
         Ok(Type::Number {
             value: f.value(),
             line: f.line(),
         })
     }
 
-    fn visit_string(&mut self, s: &model::StringType) -> Result<Type, RuntimeError> {
+    fn visit_string(&mut self, s: &model::StringLiteral) -> Result<Type, RuntimeError> {
         Ok(Type::String {
             value: s.value().into(),
             line: s.line(),
         })
     }
 
-    fn visit_bool(&mut self, b: &model::Bool) -> Result<Type, RuntimeError> {
+    fn visit_bool(&mut self, b: &model::BoolLiteral) -> Result<Type, RuntimeError> {
         Ok(Type::Bool {
             value: b.value(),
             line: b.line(),
@@ -422,9 +422,22 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
         };
         let mut fork = self.fork(); // create new scope for the block
+
         if value {
-            fork.interpret(i.then())?;
-        } else if let Some(r#else) = i.r#else() {
+            return fork.interpret(i.then());
+        }
+
+        for elif in i.elif() {
+            let test = elif.test().accept(self)?;
+            let Type::Bool { value, .. } = test else {
+                return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
+            };
+            if value {
+                return fork.interpret(elif.then());
+            }
+        }
+
+        if let Some(r#else) = i.r#else() {
             fork.interpret(r#else)?;
         }
         Ok(())

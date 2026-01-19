@@ -1,6 +1,9 @@
 use crate::{
     errors::ParseError,
-    model::{Assignment, BinOp, Bool, Expr, Float, Identifier, If, Integer, LogicalOp, Print, Println, Stmt, Stmts, StringType, UnOp, While},
+    model::{
+        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, Identifier, If, IntegerLiteral, LogicalOp, Print, Println, Stmt, Stmts, StringLiteral, UnOp,
+        While,
+    },
     tokens::{Token, TokenKind},
 };
 
@@ -66,19 +69,19 @@ impl Parser {
         match token.kind() {
             TokenKind::StringLiteral { .. } => {
                 self.advance();
-                Ok(Expr::String(StringType::try_from(&token)?))
+                Ok(Expr::String(StringLiteral::try_from(&token)?))
             }
             TokenKind::True | TokenKind::False => {
                 self.advance();
-                Ok(Expr::Bool(Bool::try_from(&token)?))
+                Ok(Expr::Bool(BoolLiteral::try_from(&token)?))
             }
             TokenKind::IntegerLiteral { .. } => {
                 self.advance();
-                Ok(Expr::Integer(Integer::try_from(&token)?))
+                Ok(Expr::Integer(IntegerLiteral::try_from(&token)?))
             }
             TokenKind::FloatLiteral { .. } => {
                 self.advance();
-                Ok(Expr::Float(Float::try_from(&token)?))
+                Ok(Expr::Float(FloatLiteral::try_from(&token)?))
             }
             TokenKind::LParen => {
                 self.advance();
@@ -248,6 +251,17 @@ impl Parser {
         }
 
         let then = self.stmts()?;
+        let mut elif = vec![];
+
+        while self.match_curr(|tok| matches!(tok.kind(), TokenKind::Elif)) {
+            let test = self.expr()?;
+
+            if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Then)) {
+                return Err(ParseError::new("expected token 'then'".into(), self.previous_token().line()));
+            }
+
+            elif.push(Elif::new(test, self.stmts()?));
+        }
 
         let r#else = if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Else)) {
             Some(self.stmts()?)
@@ -259,7 +273,7 @@ impl Parser {
             return Err(ParseError::new("expected token 'end'".into(), self.previous_token().line()));
         }
 
-        Ok(Stmt::If(If::new(test, then, r#else)))
+        Ok(Stmt::If(If::new(test, then, elif, r#else)))
     }
 
     /// `<while> ::= 'while' <expr> 'do' <stmts> 'end'`
@@ -320,7 +334,7 @@ impl Parser {
     fn stmts(&mut self) -> Result<Stmts, ParseError> {
         let mut stmts = vec![];
         // loop until end of block or EOF
-        while !self.is_next(|tok| matches!(tok.kind(), TokenKind::Else | TokenKind::End | TokenKind::Eof)) {
+        while !self.is_next(|tok| matches!(tok.kind(), TokenKind::Else | TokenKind::Elif | TokenKind::End | TokenKind::Eof)) {
             stmts.push(self.stmt()?);
         }
         Ok(Stmts::new(stmts))
