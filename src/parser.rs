@@ -320,12 +320,11 @@ impl Parser {
             "called for_stmt without 'while' token"
         );
 
-        let lhs = self.expr()?;
+        let var = self.primary()?;
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
             return Err(ParseError::new("expected assignment after 'for' token".into(), self.previous_token().line()));
         }
-        let rhs = self.expr()?;
-        let start = Stmt::Assignment(Assignment::new(lhs.clone(), rhs.clone()));
+        let start = self.expr()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
             return Err(ParseError::new(
@@ -336,24 +335,10 @@ impl Parser {
 
         let end = self.expr()?;
 
-        // TODO: self.previous_token().line() is not really correct here, fix when doing a pass over the
-        // error reporting logic.
-        let test = Expr::BinOp(BinOp::new(
-            Token::new(TokenKind::LessEqual, self.previous_token().line()),
-            lhs.clone(),
-            end.clone(),
-        ));
-
-        let mut step = Expr::Integer(IntegerLiteral::new(1f64, self.previous_token().line()));
-
+        let mut step = None;
         if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
-            step = self.expr()?;
+            step = Some(self.expr()?);
         }
-
-        let update = Stmt::Assignment(Assignment::new(
-            lhs.clone(),
-            Expr::BinOp(BinOp::new(Token::new(TokenKind::Plus, self.previous_token().line()), lhs.clone(), step)),
-        ));
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
             return Err(ParseError::new("expected token 'do' before for loop body".into(), self.previous_token().line()));
@@ -364,7 +349,7 @@ impl Parser {
             return Err(ParseError::new("expected token 'end' after for loop body".into(), self.previous_token().line()));
         }
 
-        Ok(Stmt::For(For::new(start, test, update, body)))
+        Ok(Stmt::For(For::new(var, start, end, step, body)))
     }
 
     /// ```ignore

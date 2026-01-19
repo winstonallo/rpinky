@@ -1,5 +1,5 @@
 
-for x := 1, 15, 20 do
+for x := 1, 1 + 14, (1 * 10) - 9 do
     if x % 3 == 0 and x % 5 == 0 then
         println "FIZZBUZZ"
     elif x % 3 == 0 then

@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     errors::RuntimeError,
-    model,
+    model::{self, Expr},
     state::Environment,
     tokens::TokenKind,
     visitor::{ExprVisitor, StmtVisitor},
@@ -464,12 +464,24 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     fn visit_for(&mut self, f: &model::For) -> Result<(), RuntimeError> {
         let mut fork = self.fork();
 
-        f.start().accept(&mut fork)?;
+        let start = f.start().accept(&mut fork)?;
+        let end = f.end().accept(&mut fork)?;
+        let step = f.step().as_ref().map(|s| s.accept(&mut fork)).transpose()?.unwrap_or(Type::Number {
+            value: 1.0,
+            line: start.line(),
+        });
 
-        while let Ok(Type::Bool { value: true, .. }) = f.test().accept(&mut fork) {
+        let Expr::Identifier(i) = f.var() else {
+            return Err(RuntimeError::new(format!("cannot assign to {:?}", f.var()), start.line()));
+        };
+        fork.environment().borrow_mut().assign_local(i.name().into(), start.clone());
+
+        while fork.environment().borrow().load(i.name()).ok_or(RuntimeError::new("no".into(), start.line()))? <= end {
             fork.interpret(f.body())?;
-            f.update().accept(&mut fork)?;
+            let current = fork.environment().borrow().load(i.name()).ok_or(RuntimeError::new("no".into(), start.line()))?;
+            fork.environment().borrow_mut().assign_local(i.name().into(), (current + step.clone())?);
         }
+        f.start().accept(&mut fork)?;
 
         Ok(())
     }

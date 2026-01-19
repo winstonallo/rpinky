@@ -467,32 +467,32 @@ impl While {
 /// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
 #[derive(Clone, Debug)]
 pub struct For {
-    start: Box<Stmt>,
-    test: Expr,
-    update: Box<Stmt>,
+    var: Expr,
+    start: Expr,
+    end: Expr,
+    step: Option<Expr>,
     body: Stmts,
 }
 
 impl For {
-    pub fn new(start: Stmt, test: Expr, update: Stmt, body: Stmts) -> Self {
-        Self {
-            start: Box::new(start),
-            test,
-            update: Box::new(update),
-            body,
-        }
+    pub fn new(var: Expr, start: Expr, end: Expr, step: Option<Expr>, body: Stmts) -> Self {
+        Self { var, start, end, step, body }
     }
 
-    pub fn start(&self) -> &Stmt {
+    pub fn var(&self) -> &Expr {
+        &self.var
+    }
+
+    pub fn start(&self) -> &Expr {
         &self.start
     }
 
-    pub fn test(&self) -> &Expr {
-        &self.test
+    pub fn end(&self) -> &Expr {
+        &self.end
     }
 
-    pub fn update(&self) -> &Stmt {
-        &self.update
+    pub fn step(&self) -> &Option<Expr> {
+        &self.step
     }
 
     pub fn body(&self) -> &Stmts {

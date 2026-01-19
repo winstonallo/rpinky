@@ -124,6 +124,16 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.indented();
         self.print_stmts(i.then())?;
         self.dedent();
+        for elif in i.elif() {
+            writeln!(self.f, "{}elif", self.indent())?;
+            self.indented();
+            elif.test().accept(self)?;
+            self.dedent();
+            writeln!(self.f, "{}then", self.indent())?;
+            self.indented();
+            self.print_stmts(elif.then())?;
+            self.dedent();
+        }
         if let Some(else_branch) = i.r#else() {
             writeln!(self.f, "{}else", self.indent())?;
             self.indented();
@@ -163,12 +173,20 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.indented();
         writeln!(self.f, "{}assignment{{", self.indent())?;
         self.indented();
+        f.var().accept(self)?;
         f.start().accept(self)?;
-        f.test().accept(self)?;
-        f.update().accept(self)?;
+        self.dedent();
+        writeln!(self.f, "{}<= ", self.indent())?;
+
+        f.end().accept(self)?;
         self.dedent();
         writeln!(self.f, "{}stepby", self.indent())?;
-
+        self.indented();
+        if let Some(s) = f.step() {
+            s.accept(self)?;
+        } else {
+            writeln!(self.f, "{}1.0", self.indent())?;
+        }
         self.dedent();
         writeln!(self.f, "{}do", self.indent())?;
 
