@@ -121,6 +121,10 @@ impl TryFrom<&Token> for IntegerLiteral {
 }
 
 impl IntegerLiteral {
+    pub fn new(value: f64, line: usize) -> Self {
+        Self { value, line }
+    }
+
     pub fn value(&self) -> f64 {
         self.value
     }
@@ -463,27 +467,32 @@ impl While {
 /// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
 #[derive(Clone, Debug)]
 pub struct For {
-    start: Assignment,
-    end: Expr,
-    step: Option<Expr>,
+    start: Box<Stmt>,
+    test: Expr,
+    update: Box<Stmt>,
     body: Stmts,
 }
 
 impl For {
-    pub fn new(start: Assignment, end: Expr, step: Option<Expr>, body: Stmts) -> Self {
-        Self { start, end, step, body }
+    pub fn new(start: Stmt, test: Expr, update: Stmt, body: Stmts) -> Self {
+        Self {
+            start: Box::new(start),
+            test,
+            update: Box::new(update),
+            body,
+        }
     }
 
-    pub fn start(&self) -> &Assignment {
+    pub fn start(&self) -> &Stmt {
         &self.start
     }
 
-    pub fn end(&self) -> &Expr {
-        &self.end
+    pub fn test(&self) -> &Expr {
+        &self.test
     }
 
-    pub fn step(&self) -> &Option<Expr> {
-        &self.step
+    pub fn update(&self) -> &Stmt {
+        &self.update
     }
 
     pub fn body(&self) -> &Stmts {

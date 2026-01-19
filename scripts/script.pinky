@@ -1,6 +1,5 @@
-x := 1000
 
-for x := 1, 15, 2 do
+for x := 1, 15, 20 do
     if x % 3 == 0 and x % 5 == 0 then
         println "FIZZBUZZ"
     elif x % 3 == 0 then
@@ -10,10 +9,5 @@ for x := 1, 15, 2 do
     else
         println x
     end
-end
 
-if 1 == 1 then
-    println x
 end
-
-println x

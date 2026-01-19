@@ -163,17 +163,11 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.indented();
         writeln!(self.f, "{}assignment{{", self.indent())?;
         self.indented();
-        f.start().lhs().accept(self)?;
-        writeln!(self.f, "{}:=", self.indent())?;
-        f.start().rhs().accept(self)?;
+        f.start().accept(self)?;
+        f.test().accept(self)?;
+        f.update().accept(self)?;
         self.dedent();
-        writeln!(self.f, "{}}}", self.indent())?;
-        writeln!(self.f, "{}to", self.indent())?;
-        f.end().accept(self)?;
         writeln!(self.f, "{}stepby", self.indent())?;
-        if let Some(s) = f.step() {
-            s.accept(self)?;
-        }
 
         self.dedent();
         writeln!(self.f, "{}do", self.indent())?;

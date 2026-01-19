@@ -325,7 +325,7 @@ impl Parser {
             return Err(ParseError::new("expected assignment after 'for' token".into(), self.previous_token().line()));
         }
         let rhs = self.expr()?;
-        let start = Assignment::new(lhs, rhs);
+        let start = Stmt::Assignment(Assignment::new(lhs.clone(), rhs.clone()));
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
             return Err(ParseError::new(
@@ -336,12 +336,24 @@ impl Parser {
 
         let end = self.expr()?;
 
-        let mut step = None;
+        // TODO: self.previous_token().line() is not really correct here, fix when doing a pass over the
+        // error reporting logic.
+        let test = Expr::BinOp(BinOp::new(
+            Token::new(TokenKind::LessEqual, self.previous_token().line()),
+            lhs.clone(),
+            end.clone(),
+        ));
 
-        if self.is_next(|tok| matches!(tok.kind(), TokenKind::Comma)) {
-            self.advance();
-            step = Some(self.expr()?);
+        let mut step = Expr::Integer(IntegerLiteral::new(1f64, self.previous_token().line()));
+
+        if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
+            step = self.expr()?;
         }
+
+        let update = Stmt::Assignment(Assignment::new(
+            lhs.clone(),
+            Expr::BinOp(BinOp::new(Token::new(TokenKind::Plus, self.previous_token().line()), lhs.clone(), step)),
+        ));
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
             return Err(ParseError::new("expected token 'do' before for loop body".into(), self.previous_token().line()));
@@ -352,7 +364,7 @@ impl Parser {
             return Err(ParseError::new("expected token 'end' after for loop body".into(), self.previous_token().line()));
         }
 
-        Ok(Stmt::For(For::new(start, end, step, body)))
+        Ok(Stmt::For(For::new(start, test, update, body)))
     }
 
     /// ```ignore
