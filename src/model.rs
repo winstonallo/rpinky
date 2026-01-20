@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     debug,
     errors::ParseError,
@@ -321,16 +323,16 @@ impl LogicalOp {
 
 #[derive(Debug, Clone)]
 pub struct Identifier {
-    name: String,
+    name: Rc<String>,
     line: usize,
 }
 
 impl Identifier {
-    pub fn new(name: String, line: usize) -> Self {
-        Self { name, line }
+    pub fn new(name: &Rc<String>, line: usize) -> Self {
+        Self { name: name.clone(), line }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &Rc<String> {
         &self.name
     }
 

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     errors::ParseError,
     model::{
@@ -93,7 +95,7 @@ impl Parser {
             }
             TokenKind::Identifier { lexeme } => {
                 self.advance();
-                Ok(Expr::Identifier(Identifier::new(lexeme.to_string(), token.line())))
+                Ok(Expr::Identifier(Identifier::new(&Rc::new(lexeme.to_string()), token.line())))
             }
             _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
         }

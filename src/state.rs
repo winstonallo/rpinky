@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use crate::interpreter::Type;
 
 pub struct Environment {
-    vars: HashMap<String, Type>,
+    vars: HashMap<Rc<String>, Type>,
     parent: Option<Rc<RefCell<Environment>>>,
 }
 
@@ -22,8 +22,8 @@ impl Environment {
         }))
     }
 
-    pub fn load(&self, identifier: &str) -> Option<Type> {
-        if let Some(val) = self.vars.get(identifier) {
+    pub fn load(&self, identifier: Rc<String>) -> Option<Type> {
+        if let Some(val) = self.vars.get(&identifier.clone()) {
             Some(val.clone())
         } else if let Some(parent) = &self.parent {
             parent.borrow().load(identifier)
@@ -33,21 +33,21 @@ impl Environment {
     }
 
     /// Store in the scope where the variable is defined, or current if new
-    pub fn assign(&mut self, identifier: String, value: Type) {
-        if self.vars.contains_key(&identifier) {
-            self.vars.insert(identifier, value);
+    pub fn assign(&mut self, identifier: &Rc<String>, value: Type) {
+        if self.vars.contains_key(identifier) {
+            self.vars.insert(identifier.clone(), value);
         } else if let Some(parent) = &self.parent
-            && parent.borrow().load(&identifier).is_some()
+            && parent.borrow().load(identifier.clone()).is_some()
         {
             parent.borrow_mut().assign(identifier, value);
         } else {
-            self.vars.insert(identifier, value);
+            self.vars.insert(identifier.clone(), value);
         }
     }
 
     /// Assign in the local scope
-    pub fn assign_local(&mut self, identifier: String, value: Type) {
-        self.vars.insert(identifier, value);
+    pub fn assign_local(&mut self, identifier: &Rc<String>, value: Type) {
+        self.vars.insert(identifier.clone(), value);
     }
 
     pub fn parent(&self) -> Option<Rc<RefCell<Self>>> {

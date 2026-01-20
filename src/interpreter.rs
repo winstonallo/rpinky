@@ -396,7 +396,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
     }
 
     fn visit_identifier(&mut self, i: &model::Identifier) -> Result<Type, RuntimeError> {
-        match self.environment().borrow().load(i.name()) {
+        match self.environment().borrow().load(i.name().clone()) {
             Some(value) => Ok(value),
             None => Err(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
         }
@@ -449,7 +449,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             return Err(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), rvalue.line()));
         };
 
-        self.environment().borrow_mut().assign(i.name().into(), rvalue);
+        self.environment().borrow_mut().assign(i.name(), rvalue);
         Ok(())
     }
 
@@ -476,9 +476,19 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         };
         fork.environment().borrow_mut().assign_local(i.name().into(), start.clone());
 
-        while fork.environment().borrow().load(i.name()).ok_or(RuntimeError::new("no".into(), start.line()))? <= end {
+        while fork
+            .environment()
+            .borrow()
+            .load(i.name().clone())
+            .ok_or(RuntimeError::new("no".into(), start.line()))?
+            <= end
+        {
             fork.interpret(f.body())?;
-            let current = fork.environment().borrow().load(i.name()).ok_or(RuntimeError::new("no".into(), start.line()))?;
+            let current = fork
+                .environment()
+                .borrow()
+                .load(i.name().clone())
+                .ok_or(RuntimeError::new("no".into(), start.line()))?;
             fork.environment().borrow_mut().assign_local(i.name().into(), (current + step.clone())?);
         }
         f.start().accept(&mut fork)?;
