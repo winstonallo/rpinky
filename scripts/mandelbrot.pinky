@@ -2,10 +2,10 @@ left_edge := -520
 right_edge := 400
 top_edge := 400
 bottom_edge := -400
-x_step := 3
-y_step := 7
+x_step := 1
+y_step := 3
 
-max_iter := 200
+max_iter := 400
 
 for y0 := bottom_edge, top_edge, y_step do
     for x0 := left_edge, right_edge, x_step do
