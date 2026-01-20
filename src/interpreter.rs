@@ -466,32 +466,32 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
         let start = f.start().accept(&mut fork)?;
         let end = f.end().accept(&mut fork)?;
+
         let step = f.step().as_ref().map(|s| s.accept(&mut fork)).transpose()?.unwrap_or(Type::Number {
             value: 1.0,
             line: start.line(),
         });
 
+        let start_value = if let Type::Number { value, .. } = start { value } else { panic!() };
+        let end_value = if let Type::Number { value, .. } = end { value } else { panic!() };
+        let step_value = if let Type::Number { value, .. } = step { value } else { panic!() };
+
         let Expr::Identifier(i) = f.var() else {
             return Err(RuntimeError::new(format!("cannot assign to {:?}", f.var()), start.line()));
         };
+
         fork.environment().borrow_mut().assign_local(i.name().into(), start.clone());
 
-        while fork
-            .environment()
-            .borrow()
-            .load(i.name().clone())
-            .ok_or(RuntimeError::new("no".into(), start.line()))?
-            <= end
-        {
+        for val in (start_value as isize..=end_value as isize).step_by(step_value as usize) {
             fork.interpret(f.body())?;
-            let current = fork
-                .environment()
-                .borrow()
-                .load(i.name().clone())
-                .ok_or(RuntimeError::new("no".into(), start.line()))?;
-            fork.environment().borrow_mut().assign_local(i.name().into(), (current + step.clone())?);
+            fork.environment().borrow_mut().assign_local(
+                i.name(),
+                Type::Number {
+                    value: (val + 1) as f64,
+                    line: start.line(),
+                },
+            );
         }
-        f.start().accept(&mut fork)?;
 
         Ok(())
     }
