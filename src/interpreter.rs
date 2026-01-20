@@ -466,31 +466,40 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
         let start = f.start().accept(&mut fork)?;
         let end = f.end().accept(&mut fork)?;
+        let step = f.step().as_ref().map(|s| s.accept(&mut fork)).transpose()?;
 
-        let step = f.step().as_ref().map(|s| s.accept(&mut fork)).transpose()?.unwrap_or(Type::Number {
-            value: 1.0,
-            line: start.line(),
-        });
-
-        let start_value = if let Type::Number { value, .. } = start { value } else { panic!() };
-        let end_value = if let Type::Number { value, .. } = end { value } else { panic!() };
-        let step_value = if let Type::Number { value, .. } = step { value } else { panic!() };
-
-        let Expr::Identifier(i) = f.var() else {
-            return Err(RuntimeError::new(format!("cannot assign to {:?}", f.var()), start.line()));
+        let Type::Number { value: mut current, line } = start else {
+            return Err(RuntimeError::new("for loop start must be a number".into(), start.line()));
+        };
+        let Type::Number { value: end_value, .. } = end else {
+            return Err(RuntimeError::new("for loop end must be a number".into(), end.line()));
+        };
+        let step_value = match step {
+            Some(Type::Number { value, .. }) => value,
+            None => 1.0,
+            Some(other) => return Err(RuntimeError::new("for loop step must be a number".into(), other.line())),
         };
 
-        fork.environment().borrow_mut().assign_local(i.name().into(), start.clone());
+        let Expr::Identifier(i) = f.var() else {
+            return Err(RuntimeError::new(format!("cannot assign to {:?}", f.var()), line));
+        };
 
-        for val in (start_value as isize..=end_value as isize).step_by(step_value as usize) {
-            fork.interpret(f.body())?;
-            fork.environment().borrow_mut().assign_local(
-                i.name(),
-                Type::Number {
-                    value: (val + 1) as f64,
-                    line: start.line(),
-                },
-            );
+        let name = i.name().clone();
+
+        fork.environment().borrow_mut().assign_local(&name, Type::Number { value: current, line });
+
+        if step_value > 0.0 {
+            while current <= end_value {
+                fork.interpret(f.body())?;
+                current += step_value;
+                fork.environment().borrow_mut().assign_local(&name, Type::Number { value: current, line });
+            }
+        } else if step_value < 0.0 {
+            while current >= end_value {
+                fork.interpret(f.body())?;
+                current += step_value;
+                fork.environment().borrow_mut().assign_local(&name, Type::Number { value: current, line });
+            }
         }
 
         Ok(())
