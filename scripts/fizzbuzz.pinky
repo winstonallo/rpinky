@@ -1,5 +1,4 @@
-
-for x := 1, 1 + 14, (1 * 10) - 9 do
+for x := 15, 10 do
     if x % 3 == 0 and x % 5 == 0 then
         println "FIZZBUZZ"
     elif x % 3 == 0 then
@@ -9,5 +8,4 @@ for x := 1, 1 + 14, (1 * 10) - 9 do
     else
         println x
     end
-
 end

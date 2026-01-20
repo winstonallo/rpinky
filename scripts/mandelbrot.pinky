@@ -1,0 +1,33 @@
+left_edge := -520
+right_edge := 400
+top_edge := 400
+bottom_edge := -400
+x_step := 3
+y_step := 7
+
+max_iter := 200
+
+for y0 := bottom_edge, top_edge, y_step do
+    for x0 := left_edge, right_edge, x_step do
+        x := 0
+        y := 0
+        char := " "
+        i := 0
+        while i < max_iter do
+            x_x := x ^ 2 / 200
+            y_y := y ^ 2 / 200
+            if x_x + y_y > 800 then
+                char := "" + i
+                if i > 9 then
+                    char := "@"
+                end
+                i := max_iter
+            end
+            y := x * y / 100 + y0
+            x := x_x - y_y + x0
+            i := i + 1
+        end
+        print char
+    end
+    println " "
+end

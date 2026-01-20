@@ -218,20 +218,16 @@ impl Parser {
 
     /// `<print_stmt> ::= 'print' expr`
     fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
-        debug_assert!(
-            self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print)),
-            "called print_stmt without 'print' token"
-        );
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print));
+        debug_assert!(matched, "called print_stmt without 'print' token");
 
         Ok(Stmt::Print(Print::new(self.expr()?)))
     }
 
     /// `<print_stmt> ::= 'print' expr`
     fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
-        debug_assert!(
-            self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println)),
-            "called println_stmt without 'println' token"
-        );
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println));
+        debug_assert!(matched, "called println_stmt without 'println' token");
 
         Ok(Stmt::Println(Println::new(self.expr()?)))
     }
@@ -242,7 +238,8 @@ impl Parser {
     ///     ( 'else' <stmts> )? 'end'
     /// ```
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
-        debug_assert!(self.match_curr(|tok| matches!(tok.kind(), TokenKind::If)), "called if_stmt without 'if' token");
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::If));
+        debug_assert!(matched, "called if_stmt without 'if' token");
 
         let test = self.expr()?;
 
@@ -287,10 +284,8 @@ impl Parser {
 
     /// `<while> ::= 'while' <expr> 'do' <stmts> 'end'`
     fn while_stmt(&mut self) -> Result<Stmt, ParseError> {
-        debug_assert!(
-            self.match_curr(|tok| matches!(tok.kind(), TokenKind::While)),
-            "called while_stmt without 'while' token"
-        );
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::While));
+        debug_assert!(matched, "called while_stmt without 'while' token");
 
         let test = self.expr()?;
 
@@ -315,10 +310,8 @@ impl Parser {
 
     /// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
     fn for_stmt(&mut self) -> Result<Stmt, ParseError> {
-        debug_assert!(
-            self.match_curr(|tok| matches!(tok.kind(), TokenKind::For)),
-            "called for_stmt without 'while' token"
-        );
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::For));
+        debug_assert!(matched, "called for_stmt without 'for' token");
 
         let var = self.primary()?;
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
