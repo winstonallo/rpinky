@@ -25,6 +25,7 @@ pub enum Expr {
     Bool(BoolLiteral),
     LogicalOp(LogicalOp),
     Identifier(Identifier),
+    FuncCall(FuncCall),
 }
 
 impl Expr {
@@ -39,6 +40,7 @@ impl Expr {
             Expr::BinOp(op) => visitor.visit_binop(op),
             Expr::LogicalOp(op) => visitor.visit_logical(op),
             Expr::Identifier(i) => visitor.visit_identifier(i),
+            Expr::FuncCall(f) => todo!(),
         }
     }
 }
@@ -51,6 +53,7 @@ pub enum Stmt {
     Assignment(Assignment),
     While(While),
     For(For),
+    FuncDecl(FuncDecl),
 }
 
 impl Stmt {
@@ -62,6 +65,7 @@ impl Stmt {
             Stmt::Assignment(a) => visitor.visit_assignment(a),
             Stmt::While(w) => visitor.visit_while(w),
             Stmt::For(f) => visitor.visit_for(f),
+            Stmt::FuncDecl(f) => todo!(),
         }
     }
 }
@@ -501,3 +505,15 @@ impl For {
         &self.body
     }
 }
+
+/// `<funcdecl> ::= "func" <identifier> "(" <params>? ")" <body> "end"`
+#[derive(Clone)]
+pub struct FuncDecl {}
+
+/// `<params> ::= <identifier> ( "," <identifier> )*`
+#[derive(Clone)]
+pub struct FuncParams {}
+
+/// `<funccall> ::= <identifier> "(" <args>? ")"
+#[derive(Clone)]
+pub struct FuncCall {}
