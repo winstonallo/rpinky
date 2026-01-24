@@ -98,7 +98,7 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_func_call(&mut self, c: &crate::model::FuncCall) -> std::fmt::Result {
-        writeln!(self.f, "{}FuncCall{{", self.indent())?;
+        writeln!(self.f, "{}funccall {{", self.indent())?;
         self.indented();
         writeln!(self.f, "{}{}(", self.indent(), c.name())?;
         self.indented();
@@ -112,54 +112,66 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
 
 impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     fn visit_print(&mut self, p: &Print) -> std::fmt::Result {
-        writeln!(self.f, "{}print", self.indent())?;
+        writeln!(self.f, "{}print {{", self.indent())?;
         self.indented();
         p.expr().accept(self)?;
         self.dedent();
+        writeln!(self.f, "{}}}", self.indent())?;
         Ok(())
     }
 
     fn visit_println(&mut self, p: &Println) -> std::fmt::Result {
-        writeln!(self.f, "{}println", self.indent())?;
+        writeln!(self.f, "{}println {{", self.indent())?;
         self.indented();
         p.expr().accept(self)?;
         self.dedent();
+        writeln!(self.f, "{}}}", self.indent())?;
+
         Ok(())
     }
 
     fn visit_if(&mut self, i: &If) -> std::fmt::Result {
-        writeln!(self.f, "{}if", self.indent())?;
+        writeln!(self.f, "{}if {{", self.indent())?;
         self.indented();
         i.test().accept(self)?;
         self.dedent();
-        writeln!(self.f, "{}then", self.indent())?;
+        writeln!(self.f, "{}}}", self.indent())?;
+
+        writeln!(self.f, "{}then {{", self.indent())?;
         self.indented();
         self.print_stmts(i.then())?;
         self.dedent();
+
+        writeln!(self.f, "{}}}", self.indent())?;
         for elif in i.elif() {
-            writeln!(self.f, "{}elif", self.indent())?;
+            writeln!(self.f, "{}elif {{", self.indent())?;
             self.indented();
             elif.test().accept(self)?;
             self.dedent();
-            writeln!(self.f, "{}then", self.indent())?;
+            writeln!(self.f, "{}}}", self.indent())?;
+
+            writeln!(self.f, "{}then {{", self.indent())?;
             self.indented();
             self.print_stmts(elif.then())?;
             self.dedent();
+            writeln!(self.f, "{}}}", self.indent())?;
         }
         if let Some(else_branch) = i.r#else() {
-            writeln!(self.f, "{}else", self.indent())?;
+            writeln!(self.f, "{}else {{", self.indent())?;
             self.indented();
             self.print_stmts(else_branch)?;
             self.dedent();
+            writeln!(self.f, "{}}}", self.indent())?;
         }
-        writeln!(self.f, "{}end", self.indent())
+
+        Ok(())
     }
 
     fn visit_assignment(&mut self, a: &crate::model::Assignment) -> std::fmt::Result {
-        writeln!(self.f, "{}assignment{{", self.indent())?;
+        writeln!(self.f, "{}assignment {{", self.indent())?;
         self.indented();
         a.lhs().accept(self)?;
-        writeln!(self.f, "{}:=", self.indent())?;
+
         a.rhs().accept(self)?;
         self.dedent();
         writeln!(self.f, "{}}}", self.indent())?;
@@ -168,22 +180,25 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_while(&mut self, w: &crate::model::While) -> std::fmt::Result {
-        writeln!(self.f, "{}while", self.indent())?;
+        writeln!(self.f, "{}while {{", self.indent())?;
         self.indented();
         w.test().accept(self)?;
         self.dedent();
-        writeln!(self.f, "{}do", self.indent())?;
+        writeln!(self.f, "{}}}", self.indent())?;
+
+        writeln!(self.f, "{}do {{", self.indent())?;
 
         self.indented();
         self.print_stmts(w.body())?;
         self.dedent();
-        writeln!(self.f, "{}end", self.indent())
+        writeln!(self.f, "{}end", self.indent())?;
+        writeln!(self.f, "{}}}", self.indent())
     }
 
     fn visit_for(&mut self, f: &crate::model::For) -> std::fmt::Result {
-        writeln!(self.f, "{}for", self.indent())?;
+        writeln!(self.f, "{}for {{", self.indent())?;
         self.indented();
-        writeln!(self.f, "{}assignment{{", self.indent())?;
+        writeln!(self.f, "{}assignment {{", self.indent())?;
         self.indented();
         f.var().accept(self)?;
         f.start().accept(self)?;
@@ -192,7 +207,7 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
 
         f.end().accept(self)?;
         self.dedent();
-        writeln!(self.f, "{}stepby", self.indent())?;
+        writeln!(self.f, "{}stepby {{", self.indent())?;
         self.indented();
         if let Some(s) = f.step() {
             s.accept(self)?;
@@ -200,19 +215,21 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
             writeln!(self.f, "{}1.0", self.indent())?;
         }
         self.dedent();
-        writeln!(self.f, "{}do", self.indent())?;
+        writeln!(self.f, "{}}}", self.indent())?;
+
+        writeln!(self.f, "{}do {{", self.indent())?;
 
         self.indented();
         self.print_stmts(f.body())?;
+
         self.dedent();
-        writeln!(self.f, "{}end", self.indent())
+        writeln!(self.f, "{}}}", self.indent())
     }
 
     fn visit_func_decl(&mut self, d: &crate::model::FuncDecl) -> std::fmt::Result {
-        writeln!(self.f, "{}funcdecl{{", self.indent())?;
+        writeln!(self.f, "{}funcdecl {{", self.indent())?;
         self.indented();
         writeln!(self.f, "{}{}(", self.indent(), d.name())?;
-
         self.indented();
         write!(
             self.f,
@@ -225,18 +242,22 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         )?;
 
         self.dedent();
-
-        writeln!(self.f, "{})", self.indent())?;
+        writeln!(self.f, "{}) {{", self.indent())?;
         self.indented();
         self.print_stmts(d.body())?;
         self.dedent();
-        writeln!(self.f, "{}end\n", self.indent())?;
+
+        writeln!(self.f, "{}}}", self.indent())?;
         self.dedent();
         writeln!(self.f, "{}}}", self.indent())
     }
 
     fn visit_expr_stmt(&mut self, e: &crate::model::Expr) -> std::fmt::Result {
-        e.accept(self)
+        writeln!(self.f, "{}funccall_stmt{{", self.indent())?;
+        self.indented();
+        e.accept(self)?;
+        self.dedent();
+        writeln!(self.f, "{}}}", self.indent())
     }
 }
 
