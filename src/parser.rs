@@ -347,6 +347,11 @@ impl Parser {
         Ok(Stmt::For(For::new(var, start, end, step, body)))
     }
 
+    /// `<func_decl> ::= "func" <name> "(" <params>? ")" <body> "end"`
+    fn func_decl_stmt(&mut self) -> Result<Stmt, ParseError> {
+        todo!()
+    }
+
     /// ```ignore
     /// stmt ::= expr_stmt
     ///     | print_stmt
@@ -369,6 +374,7 @@ impl Parser {
             TokenKind::If => self.if_stmt(),
             TokenKind::While => self.while_stmt(),
             TokenKind::For => self.for_stmt(),
+            TokenKind::Func => self.func_decl_stmt(),
             _ => {
                 let lhs = self.expr()?;
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {

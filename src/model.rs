@@ -53,7 +53,7 @@ pub enum Stmt {
     Assignment(Assignment),
     While(While),
     For(For),
-    FuncDecl(FuncDecl),
+    Decl(Decl),
 }
 
 impl Stmt {
@@ -65,7 +65,7 @@ impl Stmt {
             Stmt::Assignment(a) => visitor.visit_assignment(a),
             Stmt::While(w) => visitor.visit_while(w),
             Stmt::For(f) => visitor.visit_for(f),
-            Stmt::FuncDecl(f) => todo!(),
+            Stmt::Decl(d) => todo!(),
         }
     }
 }
@@ -508,12 +508,85 @@ impl For {
 
 /// `<funcdecl> ::= "func" <identifier> "(" <params>? ")" <body> "end"`
 #[derive(Clone)]
-pub struct FuncDecl {}
+pub struct FuncDecl {
+    name: String,
+    params: Vec<FuncParam>,
+    body: Stmts,
+    line: usize,
+}
+
+impl FuncDecl {
+    pub fn new(name: String, params: Vec<FuncParam>, body: Stmts, line: usize) -> Self {
+        Self { name, params, body, line }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn params(&self) -> &Vec<FuncParam> {
+        &self.params
+    }
+
+    pub fn body(&self) -> &Stmts {
+        &self.body
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+}
 
 /// `<params> ::= <identifier> ( "," <identifier> )*`
 #[derive(Clone)]
-pub struct FuncParams {}
+pub struct FuncParam {
+    name: String,
+    line: usize,
+}
+
+impl FuncParam {
+    pub fn new(name: String, line: usize) -> Self {
+        Self { name, line }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+}
 
 /// `<funccall> ::= <identifier> "(" <args>? ")"
+/// `<args> ::= <expr> ( "," <expr> )*`
 #[derive(Clone)]
-pub struct FuncCall {}
+pub struct FuncCall {
+    name: String,
+    args: Vec<Expr>,
+    line: usize,
+}
+
+impl FuncCall {
+    pub fn new(name: String, args: Vec<Expr>, line: usize) -> Self {
+        Self { name, args, line }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn args(&self) -> &Vec<Expr> {
+        &self.args
+    }
+
+    pub fn line(&self) -> usize {
+        self.line
+    }
+}
+
+#[derive(Clone)]
+pub enum Decl {
+    Func(FuncDecl),
+    Params(FuncParam),
+}
