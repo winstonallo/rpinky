@@ -96,6 +96,18 @@ impl ExprVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     fn visit_identifier(&mut self, i: &crate::model::Identifier) -> std::fmt::Result {
         writeln!(self.f, "{}identifier {{ {} }}", self.indent(), i.name())
     }
+
+    fn visit_func_call(&mut self, c: &crate::model::FuncCall) -> std::fmt::Result {
+        writeln!(self.f, "{}FuncCall{{", self.indent())?;
+        self.indented();
+        writeln!(self.f, "{}{}(", self.indent(), c.name())?;
+        self.indented();
+        c.args().iter().for_each(|a| _ = a.accept(self));
+        self.dedent();
+        writeln!(self.f, "{})", self.indent())?;
+        self.dedent();
+        writeln!(self.f, "{}}}", self.indent())
+    }
 }
 
 impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
@@ -216,7 +228,11 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.indented();
         self.print_stmts(d.body())?;
         self.dedent();
-        writeln!(self.f, "{}end", self.indent())
+        writeln!(self.f, "{}end\n", self.indent())
+    }
+
+    fn visit_expr_stmt(&mut self, e: &crate::model::Expr) -> std::fmt::Result {
+        e.accept(self)
     }
 }
 

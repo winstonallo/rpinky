@@ -401,6 +401,10 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             None => Err(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
         }
     }
+
+    fn visit_func_call(&mut self, i: &model::FuncCall) -> Result<Type, RuntimeError> {
+        todo!("interpreter::visit_func_call {i:?}")
+    }
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
@@ -505,8 +509,13 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_func_decl(&mut self, _d: &model::FuncDecl) -> Result<(), RuntimeError> {
-        todo!()
+    fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Result<(), RuntimeError> {
+        todo!("interpreter::visit_func_decl {d:?}");
+    }
+
+    fn visit_expr_stmt(&mut self, e: &model::Expr) -> Result<(), RuntimeError> {
+        e.accept(self)?;
+        Ok(())
     }
 }
 

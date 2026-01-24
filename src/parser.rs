@@ -3,8 +3,8 @@ use std::rc::Rc;
 use crate::{
     errors::ParseError,
     model::{
-        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, FuncDecl, FuncParam, Identifier, If, IntegerLiteral, LogicalOp, Print, Println, Stmt,
-        Stmts, StringLiteral, UnOp, While,
+        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, FuncCall, FuncDecl, FuncParam, Identifier, If, IntegerLiteral, LogicalOp, Print,
+        Println, Stmt, Stmts, StringLiteral, UnOp, While,
     },
     tokens::{Token, TokenKind},
 };
@@ -95,7 +95,15 @@ impl Parser {
             }
             TokenKind::Identifier { lexeme } => {
                 self.advance();
-                Ok(Expr::Identifier(Identifier::new(&Rc::new(lexeme.to_string()), token.line())))
+                if self.match_curr(|tok| matches!(tok.kind(), TokenKind::LParen)) {
+                    let args = self.args()?;
+                    if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
+                        return Err(ParseError::new("expected token ')'".into(), token.line()));
+                    }
+                    Ok(Expr::FuncCall(FuncCall::new(lexeme.to_string(), args, token.line())))
+                } else {
+                    Ok(Expr::Identifier(Identifier::new(&Rc::new(lexeme.to_string()), token.line())))
+                }
             }
             _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
         }
@@ -212,10 +220,6 @@ impl Parser {
         }
         Ok(expr)
     }
-
-    // fn func_call(&mut self) -> Result<Expr, ParseError> {
-
-    // }
 
     /// Creates an AST representation of an expression.
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
@@ -351,40 +355,64 @@ impl Parser {
         Ok(Stmt::For(For::new(var, start, end, step, body)))
     }
 
+    fn args(&mut self) -> Result<Vec<Expr>, ParseError> {
+        let mut args = vec![];
+        while !matches!(self.peek().kind(), TokenKind::RParen) {
+            args.push(self.expr()?);
+            if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
+                break;
+            }
+        }
+
+        Ok(args)
+    }
+
+    fn params(&mut self) -> Result<Vec<FuncParam>, ParseError> {
+        let mut params = vec![];
+        while !matches!(self.peek().kind(), TokenKind::RParen) {
+            let Expr::Identifier(identifier) = self.primary()? else {
+                return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
+            };
+            params.push(FuncParam::new(identifier.name().as_ref().into(), identifier.line()));
+            if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
+                break;
+            }
+        }
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
+            return Err(ParseError::new(
+                "expected token ')' or ',' after parameter".into(),
+                self.previous_token().line(),
+            ));
+        }
+        Ok(params)
+    }
+
     /// `<func_decl> ::= "func" <name> "(" <params>? ")" <body> "end"`
     fn func_decl_stmt(&mut self) -> Result<Stmt, ParseError> {
         let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Func));
+
         debug_assert!(tok, "called func_decl_stmt without 'func' token");
 
-        let Expr::Identifier(name) = self.primary()? else {
+        let token = self.peek();
+        let TokenKind::Identifier { lexeme } = token.kind() else {
             return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
         };
+        let name = lexeme.to_string();
+        let line = token.line();
+        self.advance();
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::LParen)) {
             return Err(ParseError::new("expected token '(' after function name".into(), self.previous_token().line()));
         }
 
-        let mut params = vec![];
-        while !matches!(self.previous_token().kind(), TokenKind::RParen) {
-            let Expr::Identifier(identifier) = self.primary()? else {
-                return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
-            };
-            params.push(FuncParam::new(identifier.name().as_ref().into(), identifier.line()));
-            if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma | TokenKind::RParen)) {
-                return Err(ParseError::new(
-                    "expected token ')' or ',' after parameter".into(),
-                    self.previous_token().line(),
-                ));
-            }
-        }
-
+        let params = self.params()?;
         let body = self.stmts()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
             return Err(ParseError::new("expected token 'end' after function body".into(), self.previous_token().line()));
         }
 
-        Ok(Stmt::FuncDecl(FuncDecl::new(name.name().as_ref().into(), params, body, name.line())))
+        Ok(Stmt::FuncDecl(FuncDecl::new(name, params, body, line)))
     }
 
     /// ```ignore
@@ -416,8 +444,7 @@ impl Parser {
                     let rhs = self.expr()?;
                     Ok(Stmt::Assignment(Assignment::new(lhs, rhs)))
                 } else {
-                    // println!("{}")
-                    unimplemented!("function call {token:?}")
+                    Ok(Stmt::ExprStmt(lhs))
                 }
             }
         }

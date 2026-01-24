@@ -10,6 +10,7 @@ pub trait ExprVisitor<T> {
     fn visit_binop(&mut self, op: &model::BinOp) -> T;
     fn visit_logical(&mut self, op: &model::LogicalOp) -> T;
     fn visit_identifier(&mut self, i: &model::Identifier) -> T;
+    fn visit_func_call(&mut self, i: &model::FuncCall) -> T;
 }
 
 pub trait StmtVisitor<T> {
@@ -20,4 +21,5 @@ pub trait StmtVisitor<T> {
     fn visit_while(&mut self, w: &model::While) -> T;
     fn visit_for(&mut self, f: &model::For) -> T;
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> T;
+    fn visit_expr_stmt(&mut self, e: &model::Expr) -> T;
 }

@@ -40,7 +40,7 @@ impl Expr {
             Expr::BinOp(op) => visitor.visit_binop(op),
             Expr::LogicalOp(op) => visitor.visit_logical(op),
             Expr::Identifier(i) => visitor.visit_identifier(i),
-            Expr::FuncCall(_f) => todo!(),
+            Expr::FuncCall(f) => visitor.visit_func_call(f),
         }
     }
 }
@@ -54,6 +54,7 @@ pub enum Stmt {
     While(While),
     For(For),
     FuncDecl(FuncDecl),
+    ExprStmt(Expr),
 }
 
 impl Stmt {
@@ -66,6 +67,7 @@ impl Stmt {
             Stmt::While(w) => visitor.visit_while(w),
             Stmt::For(f) => visitor.visit_for(f),
             Stmt::FuncDecl(d) => visitor.visit_func_decl(d),
+            Stmt::ExprStmt(e) => visitor.visit_expr_stmt(e),
         }
     }
 }
