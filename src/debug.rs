@@ -209,6 +209,8 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
     }
 
     fn visit_func_decl(&mut self, d: &crate::model::FuncDecl) -> std::fmt::Result {
+        writeln!(self.f, "{}funcdecl{{", self.indent())?;
+        self.indented();
         writeln!(self.f, "{}{}(", self.indent(), d.name())?;
 
         self.indented();
@@ -228,7 +230,9 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.indented();
         self.print_stmts(d.body())?;
         self.dedent();
-        writeln!(self.f, "{}end\n", self.indent())
+        writeln!(self.f, "{}end\n", self.indent())?;
+        self.dedent();
+        writeln!(self.f, "{}}}", self.indent())
     }
 
     fn visit_expr_stmt(&mut self, e: &crate::model::Expr) -> std::fmt::Result {
