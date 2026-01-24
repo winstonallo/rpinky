@@ -3,8 +3,8 @@ use std::rc::Rc;
 use crate::{
     errors::ParseError,
     model::{
-        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, Identifier, If, IntegerLiteral, LogicalOp, Print, Println, Stmt, Stmts, StringLiteral,
-        UnOp, While,
+        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, FuncDecl, FuncParam, Identifier, If, IntegerLiteral, LogicalOp, Print, Println, Stmt,
+        Stmts, StringLiteral, UnOp, While,
     },
     tokens::{Token, TokenKind},
 };
@@ -213,6 +213,10 @@ impl Parser {
         Ok(expr)
     }
 
+    // fn func_call(&mut self) -> Result<Expr, ParseError> {
+
+    // }
+
     /// Creates an AST representation of an expression.
     pub fn expr(&mut self) -> Result<Expr, ParseError> {
         self.or()
@@ -220,16 +224,16 @@ impl Parser {
 
     /// `<print_stmt> ::= 'print' expr`
     fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print));
-        debug_assert!(matched, "called print_stmt without 'print' token");
+        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print));
+        debug_assert!(tok, "called print_stmt without 'print' token");
 
         Ok(Stmt::Print(Print::new(self.expr()?)))
     }
 
     /// `<print_stmt> ::= 'print' expr`
     fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println));
-        debug_assert!(matched, "called println_stmt without 'println' token");
+        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println));
+        debug_assert!(tok, "called println_stmt without 'println' token");
 
         Ok(Stmt::Println(Println::new(self.expr()?)))
     }
@@ -240,8 +244,8 @@ impl Parser {
     ///     ( 'else' <stmts> )? 'end'
     /// ```
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::If));
-        debug_assert!(matched, "called if_stmt without 'if' token");
+        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::If));
+        debug_assert!(tok, "called if_stmt without 'if' token");
 
         let test = self.expr()?;
 
@@ -286,8 +290,8 @@ impl Parser {
 
     /// `<while> ::= 'while' <expr> 'do' <stmts> 'end'`
     fn while_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::While));
-        debug_assert!(matched, "called while_stmt without 'while' token");
+        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::While));
+        debug_assert!(tok, "called while_stmt without 'while' token");
 
         let test = self.expr()?;
 
@@ -312,8 +316,8 @@ impl Parser {
 
     /// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
     fn for_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::For));
-        debug_assert!(matched, "called for_stmt without 'for' token");
+        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::For));
+        debug_assert!(tok, "called for_stmt without 'for' token");
 
         let var = self.primary()?;
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
@@ -349,7 +353,38 @@ impl Parser {
 
     /// `<func_decl> ::= "func" <name> "(" <params>? ")" <body> "end"`
     fn func_decl_stmt(&mut self) -> Result<Stmt, ParseError> {
-        todo!()
+        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Func));
+        debug_assert!(tok, "called func_decl_stmt without 'func' token");
+
+        let Expr::Identifier(name) = self.primary()? else {
+            return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
+        };
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::LParen)) {
+            return Err(ParseError::new("expected token '(' after function name".into(), self.previous_token().line()));
+        }
+
+        let mut params = vec![];
+        while !matches!(self.previous_token().kind(), TokenKind::RParen) {
+            let Expr::Identifier(identifier) = self.primary()? else {
+                return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
+            };
+            params.push(FuncParam::new(identifier.name().as_ref().into(), identifier.line()));
+            if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma | TokenKind::RParen)) {
+                return Err(ParseError::new(
+                    "expected token ')' or ',' after parameter".into(),
+                    self.previous_token().line(),
+                ));
+            }
+        }
+
+        let body = self.stmts()?;
+
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
+            return Err(ParseError::new("expected token 'end' after function body".into(), self.previous_token().line()));
+        }
+
+        Ok(Stmt::FuncDecl(FuncDecl::new(name.name().as_ref().into(), params, body, name.line())))
     }
 
     /// ```ignore
@@ -381,7 +416,8 @@ impl Parser {
                     let rhs = self.expr()?;
                     Ok(Stmt::Assignment(Assignment::new(lhs, rhs)))
                 } else {
-                    unimplemented!("function call")
+                    // println!("{}")
+                    unimplemented!("function call {token:?}")
                 }
             }
         }

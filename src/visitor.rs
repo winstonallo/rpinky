@@ -19,4 +19,5 @@ pub trait StmtVisitor<T> {
     fn visit_assignment(&mut self, a: &model::Assignment) -> T;
     fn visit_while(&mut self, w: &model::While) -> T;
     fn visit_for(&mut self, f: &model::For) -> T;
+    fn visit_func_decl(&mut self, d: &model::FuncDecl) -> T;
 }

@@ -504,6 +504,10 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
         Ok(())
     }
+
+    fn visit_func_decl(&mut self, _d: &model::FuncDecl) -> Result<(), RuntimeError> {
+        todo!()
+    }
 }
 
 /// Evaluate a single expression.

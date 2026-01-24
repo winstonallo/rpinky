@@ -40,7 +40,7 @@ impl Expr {
             Expr::BinOp(op) => visitor.visit_binop(op),
             Expr::LogicalOp(op) => visitor.visit_logical(op),
             Expr::Identifier(i) => visitor.visit_identifier(i),
-            Expr::FuncCall(f) => todo!(),
+            Expr::FuncCall(_f) => todo!(),
         }
     }
 }
@@ -53,7 +53,7 @@ pub enum Stmt {
     Assignment(Assignment),
     While(While),
     For(For),
-    Decl(Decl),
+    FuncDecl(FuncDecl),
 }
 
 impl Stmt {
@@ -65,7 +65,7 @@ impl Stmt {
             Stmt::Assignment(a) => visitor.visit_assignment(a),
             Stmt::While(w) => visitor.visit_while(w),
             Stmt::For(f) => visitor.visit_for(f),
-            Stmt::Decl(d) => todo!(),
+            Stmt::FuncDecl(d) => visitor.visit_func_decl(d),
         }
     }
 }
@@ -507,7 +507,7 @@ impl For {
 }
 
 /// `<funcdecl> ::= "func" <identifier> "(" <params>? ")" <body> "end"`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FuncDecl {
     name: String,
     params: Vec<FuncParam>,
@@ -538,7 +538,7 @@ impl FuncDecl {
 }
 
 /// `<params> ::= <identifier> ( "," <identifier> )*`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FuncParam {
     name: String,
     line: usize,
@@ -560,7 +560,7 @@ impl FuncParam {
 
 /// `<funccall> ::= <identifier> "(" <args>? ")"
 /// `<args> ::= <expr> ( "," <expr> )*`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FuncCall {
     name: String,
     args: Vec<Expr>,
@@ -583,10 +583,4 @@ impl FuncCall {
     pub fn line(&self) -> usize {
         self.line
     }
-}
-
-#[derive(Clone)]
-pub enum Decl {
-    Func(FuncDecl),
-    Params(FuncParam),
 }

@@ -195,6 +195,29 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         self.dedent();
         writeln!(self.f, "{}end", self.indent())
     }
+
+    fn visit_func_decl(&mut self, d: &crate::model::FuncDecl) -> std::fmt::Result {
+        writeln!(self.f, "{}{}(", self.indent(), d.name())?;
+
+        self.indented();
+        write!(
+            self.f,
+            "{}",
+            d.params()
+                .iter()
+                .map(|p| format!("{}{}\n", self.indent(), p.name()))
+                .collect::<Vec<String>>()
+                .join("")
+        )?;
+
+        self.dedent();
+
+        writeln!(self.f, "{})", self.indent())?;
+        self.indented();
+        self.print_stmts(d.body())?;
+        self.dedent();
+        writeln!(self.f, "{}end", self.indent())
+    }
 }
 
 pub fn dump_expr(expr: &Expr, f: &mut std::fmt::Formatter<'_>, indentation: Option<usize>) -> std::fmt::Result {
