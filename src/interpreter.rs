@@ -1,4 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    ops::{ControlFlow, FromResidual},
+    rc::Rc,
+};
 
 use crate::{
     errors::RuntimeError,
@@ -13,6 +17,7 @@ pub enum Type {
     Number { value: f64, line: usize },
     Bool { value: bool, line: usize },
     String { value: String, line: usize },
+    None { line: usize },
 }
 
 impl TryFrom<&Type> for f64 {
@@ -23,6 +28,7 @@ impl TryFrom<&Type> for f64 {
             Type::Number { value, .. } => Ok(*value),
             Type::Bool { value, .. } => Ok(*value as u8 as f64),
             Type::String { value, line } => Err(RuntimeError::new(format!("cannot convert string to float: {value}"), *line)),
+            Type::None { line } => Err(RuntimeError::new("cannot convert None to float".into(), *line)),
         }
     }
 }
@@ -42,7 +48,7 @@ impl Type {
 
     pub fn line(&self) -> usize {
         match self {
-            Type::Bool { line, .. } | Type::Number { line, .. } | Type::String { line, .. } => *line,
+            Type::Bool { line, .. } | Type::Number { line, .. } | Type::String { line, .. } | Type::None { line } => *line,
         }
     }
 
@@ -133,6 +139,7 @@ impl From<&Type> for bool {
             Type::Bool { value, .. } => *value,
             Type::Number { value, .. } => *value != 0f64,
             Type::String { value, .. } => !value.is_empty(),
+            Type::None { .. } => false,
         }
     }
 }
@@ -143,6 +150,7 @@ impl std::fmt::Display for Type {
             Type::Number { value, .. } => write!(f, "{value}"),
             Type::Bool { value, .. } => write!(f, "{value}"),
             Type::String { value, .. } => write!(f, "{value}"),
+            Type::None { .. } => write!(f, "None"),
         }
     }
 }
@@ -173,6 +181,7 @@ impl std::ops::Add for Type {
                 value: lhs as u8 as f64 + rhs,
                 line,
             }),
+            (lhs, rhs) => Err(RuntimeError::new(format!("invalid operands for addition: {lhs}, {rhs}"), rhs.line())),
         }
     }
 }
@@ -189,6 +198,7 @@ macro_rules! impl_numeric_op {
                     (Type::Number{value: lhs, line}, Type::Bool{value: rhs, ..}) => Ok(Type::Number{value: lhs $op (rhs as u8 as f64), line}),
                     (Type::Bool{value: lhs, line}, Type::Number{value: rhs, ..}) => Ok(Type::Number{value: (lhs as u8 as f64) $op rhs, line} ),
                     (Type::String{line, ..}, _) | (_, Type::String{line, ..}) => Err(RuntimeError::new(concat!($name, " is not implemented for string").into(), line)),
+                    (lhs, rhs) => Err(RuntimeError::new(format!("invalid operands for {}: {lhs}, {rhs}", $name).into(), lhs.line())),
                 }
             }
         }
@@ -206,6 +216,7 @@ impl std::ops::Div for Type {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
             Self::String { line, .. } => return Err(RuntimeError::new("division is not implemented for string".into(), line)),
+            Self::None { line } => return Err(RuntimeError::new(format!("cannot divide {self} by {rhs}"), line)),
         };
         if rhs == 0f64 {
             return Err(RuntimeError::new("division by zero".into(), self.line()));
@@ -214,6 +225,7 @@ impl std::ops::Div for Type {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
             Self::String { line, .. } => return Err(RuntimeError::new("division is not implemented for string".into(), line)),
+            Self::None { line } => return Err(RuntimeError::new(format!("cannot divide {self} by {rhs}"), line)),
         };
         Ok(Type::Number {
             value: lhs / rhs,
@@ -230,6 +242,7 @@ impl std::ops::Rem for Type {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
             Self::String { line, .. } => return Err(RuntimeError::new("modulo is not implemented for string".into(), line)),
+            Self::None { line } => return Err(RuntimeError::new(format!("cannot take modulo of {self} by {rhs}"), line)),
         };
         if rhs == 0f64 {
             return Err(RuntimeError::new("modulo by zero".into(), self.line()));
@@ -238,6 +251,7 @@ impl std::ops::Rem for Type {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
             Self::String { line, .. } => return Err(RuntimeError::new("modulo is not implemented for string".into(), line)),
+            Self::None { line } => return Err(RuntimeError::new(format!("cannot take modulo of {self} by {rhs}"), line)),
         };
         Ok(Type::Number {
             value: lhs % rhs,
@@ -254,6 +268,7 @@ impl std::ops::Neg for Type {
             Type::Number { value, line } => Ok(Type::Number { value: -value, line }),
             Type::Bool { line, .. } => Err(RuntimeError::new("bad operand type for unary -: bool".into(), line)),
             Type::String { line, .. } => Err(RuntimeError::new("bad operand type for unary -: string".into(), line)),
+            Self::None { line } => return Err(RuntimeError::new(format!("bad operand type for unary -: {self}"), line)),
         }
     }
 }
@@ -266,6 +281,7 @@ impl std::ops::Not for Type {
             Type::Bool { value, line } => Type::Bool { value: !value, line },
             Type::Number { value, line } => Type::Bool { value: value == 0f64, line },
             Type::String { value, line } => Type::Bool { value: value.is_empty(), line },
+            Type::None { line } => Type::Bool { value: true, line },
         }
     }
 }
@@ -280,11 +296,12 @@ impl Interpreter {
         Self { environment }
     }
 
-    pub fn interpret(&mut self, stmts: &model::Stmts) -> Result<(), RuntimeError> {
+    pub fn interpret(&mut self, stmts: &model::Stmts) -> Eval {
         for stmt in stmts.stmts() {
             stmt.accept(self)?;
         }
-        Ok(())
+
+        Eval(Ok(Outcome::Done(Type::None { line: 0 })))
     }
 
     pub fn environment(&mut self) -> &Rc<RefCell<Environment>> {
@@ -301,7 +318,7 @@ impl Interpreter {
 impl From<&Rc<RefCell<Environment>>> for Interpreter {
     fn from(environment: &Rc<RefCell<Environment>>) -> Self {
         Self {
-            environment: Environment::fork(value),
+            environment: Environment::fork(environment),
         }
     }
 }
@@ -436,7 +453,9 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             fork.environment().borrow_mut().store_var_local(param.name(), val);
         }
 
-        fork.interpret(f.declaration().body())?;
+        if let Eval(Ok(Outcome::Return(value))) = fork.interpret(f.declaration().body()) {
+            return Ok(value);
+        }
 
         Ok(Type::Bool {
             value: true,
@@ -445,20 +464,49 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
     }
 }
 
-impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
-    fn visit_print(&mut self, p: &model::Print) -> Result<(), RuntimeError> {
+pub struct Eval(Result<Outcome, RuntimeError>);
+
+pub enum Outcome {
+    Done(Type),
+    Return(Type),
+}
+
+impl std::ops::Try for Eval {
+    type Output = Type;
+    type Residual = Eval;
+
+    fn from_output(value: Type) -> Self {
+        Eval(Ok(Outcome::Done(value)))
+    }
+
+    fn branch(self) -> std::ops::ControlFlow<Self::Residual, Self::Output> {
+        match self.0 {
+            Ok(Outcome::Done(v)) => ControlFlow::Continue(v),
+            other => ControlFlow::Break(Eval(other)),
+        }
+    }
+}
+
+impl FromResidual for Eval {
+    fn from_residual(residual: <Self as std::ops::Try>::Residual) -> Self {
+        residual
+    }
+}
+
+impl StmtVisitor<Eval> for Interpreter {
+    fn visit_print(&mut self, p: &model::Print) -> Eval {
         let value = p.expr().accept(self)?;
         print!("{value}");
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_println(&mut self, p: &model::Println) -> Result<(), RuntimeError> {
+    fn visit_println(&mut self, p: &model::Println) -> Eval {
         let value = p.expr().accept(self)?;
         println!("{value}");
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_if(&mut self, i: &model::If) -> Result<(), RuntimeError> {
+    fn visit_if(&mut self, i: &model::If) -> Eval {
         let test = i.test().accept(self)?;
         let Type::Bool { value, .. } = test else {
             return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
@@ -466,7 +514,8 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         let mut fork = self.fork(); // create new scope for the block
 
         if value {
-            return fork.interpret(i.then());
+            fork.interpret(i.then())?;
+            return Ok(Outcome::Done(Type::None { line: 0 }));
         }
 
         for elif in i.elif() {
@@ -475,35 +524,36 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
                 return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
             };
             if value {
-                return fork.interpret(elif.then());
+                fork.interpret(elif.then())?;
+                return Ok(Outcome::Done(Type::None { line: 0 }));
             }
         }
 
         if let Some(r#else) = i.r#else() {
             fork.interpret(r#else)?;
         }
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_assignment(&mut self, a: &model::Assignment) -> Result<(), RuntimeError> {
+    fn visit_assignment(&mut self, a: &model::Assignment) -> Eval {
         let rvalue = a.rhs().accept(self)?;
         let model::Expr::Identifier(i) = a.lhs() else {
             return Err(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), rvalue.line()));
         };
 
         self.environment().borrow_mut().store_var(i.name(), rvalue);
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_while(&mut self, w: &model::While) -> Result<(), RuntimeError> {
+    fn visit_while(&mut self, w: &model::While) -> Eval {
         let mut fork = self.fork();
         while let Ok(Type::Bool { value: true, .. }) = w.test().accept(&mut fork) {
             fork.interpret(w.body())?;
         }
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_for(&mut self, f: &model::For) -> Result<(), RuntimeError> {
+    fn visit_for(&mut self, f: &model::For) -> Eval {
         let mut fork = self.fork();
 
         let start = f.start().accept(&mut fork)?;
@@ -544,22 +594,22 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             }
         }
 
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Result<(), RuntimeError> {
+    fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Eval {
         let env = Environment::fork(self.environment());
         self.environment().borrow_mut().store_func(d.name(), Function::new(d.clone(), env));
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_expr(&mut self, e: &model::Expr) -> Result<(), RuntimeError> {
+    fn visit_expr(&mut self, e: &model::Expr) -> Eval {
         e.accept(self)?;
-        Ok(())
+        Ok(Outcome::Done(Type::None { line: 0 }))
     }
 
-    fn visit_ret(&mut self, r: &model::Ret) -> Result<(), RuntimeError> {
-        todo!()
+    fn visit_ret(&mut self, r: &model::Ret) -> Eval {
+        return Ok(Outcome::Return(r.value().accept(self)?));
     }
 }
 
@@ -570,7 +620,7 @@ pub fn expr(ast: &model::Expr) -> Result<Type, RuntimeError> {
 }
 
 /// Interpret a list of statements.
-pub fn interpret(stmts: &model::Stmts) -> Result<(), RuntimeError> {
+pub fn interpret(stmts: &model::Stmts) -> Result<Outcome, RuntimeError> {
     let mut interpreter = Interpreter::new(Environment::new());
     interpreter.interpret(stmts)
 }

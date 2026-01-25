@@ -1,3 +1,5 @@
+#![feature(try_trait_v2)]
+
 pub mod cli;
 pub mod debug;
 pub mod errors;

@@ -2,8 +2,11 @@ func factorial(n)
     mul := 1
     for i := 1, n do
         mul := mul * i
+        println mul
+        if mul > 100 then
+            ret mul
+        end
     end
-    ret mul
 end
 
 println factorial(6)
