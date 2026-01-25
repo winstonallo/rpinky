@@ -406,9 +406,10 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         let Some(f) = self.environment().borrow().load_func(c.name().clone()) else {
             return Err(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.line()));
         };
+
         if c.args().len() != f.params().len() {
             return Err(RuntimeError::new(
-                format!("invalid argument count, expected {}, got {}", f.params().len(), c.args().len()),
+                format!("{} expected {} parameters, got {} arguments", f.name(), f.params().len(), c.args().len()),
                 c.line(),
             ));
         }
@@ -418,6 +419,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             let val = arg.accept(&mut fork)?;
             fork.environment().borrow_mut().store_var(param.name(), val);
         }
+
         fork.interpret(f.body())?;
         Ok(Type::Bool { value: true, line: f.line() })
     }
