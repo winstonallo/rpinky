@@ -426,9 +426,10 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
 
         let mut fork = self.fork_with_environment(f.environment());
+
         for (arg, param) in c.args().iter().zip(f.declaration().params()) {
             let val = arg.accept(&mut fork)?;
-            fork.environment().borrow_mut().store_var(param.name(), val);
+            fork.environment().borrow_mut().store_var_local(param.name(), val);
         }
 
         fork.interpret(f.declaration().body())?;
