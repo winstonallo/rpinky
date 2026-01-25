@@ -526,7 +526,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Result<(), RuntimeError> {
-        self.environment().borrow_mut().store_func(&d.name(), d.clone());
+        self.environment().borrow_mut().store_func(d.name(), d.clone());
         Ok(())
     }
 
