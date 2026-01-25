@@ -261,11 +261,11 @@ impl std::ops::Rem for Type {
 }
 
 impl std::ops::Neg for Type {
-    type Output = Result<Self, RuntimeError>;
+    type Output = Eval;
 
     fn neg(self) -> Self::Output {
         match self {
-            Type::Number { value, line } => Ok(Type::Number { value: -value, line }),
+            Type::Number { value, line } => Eval(Ok(Outcome::Done(Type::Number { value: -value, line }))),
             Type::Bool { line, .. } => Err(RuntimeError::new("bad operand type for unary -: bool".into(), line)),
             Type::String { line, .. } => Err(RuntimeError::new("bad operand type for unary -: string".into(), line)),
             Self::None { line } => return Err(RuntimeError::new(format!("bad operand type for unary -: {self}"), line)),
@@ -323,40 +323,40 @@ impl From<&Rc<RefCell<Environment>>> for Interpreter {
     }
 }
 
-impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
-    fn visit_integer(&mut self, n: &model::IntegerLiteral) -> Result<Type, RuntimeError> {
-        Ok(Type::Number {
+impl ExprVisitor<Eval> for Interpreter {
+    fn visit_integer(&mut self, n: &model::IntegerLiteral) -> Eval {
+        Eval(Ok(Outcome::Done(Type::Number {
             value: n.value(),
             line: n.line(),
-        })
+        })))
     }
 
-    fn visit_float(&mut self, f: &model::FloatLiteral) -> Result<Type, RuntimeError> {
-        Ok(Type::Number {
+    fn visit_float(&mut self, f: &model::FloatLiteral) -> Eval {
+        Eval(Ok(Outcome::Done(Type::Number {
             value: f.value(),
             line: f.line(),
-        })
+        })))
     }
 
-    fn visit_string(&mut self, s: &model::StringLiteral) -> Result<Type, RuntimeError> {
-        Ok(Type::String {
+    fn visit_string(&mut self, s: &model::StringLiteral) -> Eval {
+        Eval(Ok(Outcome::Done(Type::String {
             value: s.value().into(),
             line: s.line(),
-        })
+        })))
     }
 
-    fn visit_bool(&mut self, b: &model::BoolLiteral) -> Result<Type, RuntimeError> {
-        Ok(Type::Bool {
+    fn visit_bool(&mut self, b: &model::BoolLiteral) -> Eval {
+        Eval(Ok(Outcome::Done(Type::Bool {
             value: b.value(),
             line: b.line(),
-        })
+        })))
     }
 
-    fn visit_grouping(&mut self, inner: &model::Expr) -> Result<Type, RuntimeError> {
+    fn visit_grouping(&mut self, inner: &model::Expr) -> Eval {
         inner.accept(self)
     }
 
-    fn visit_unop(&mut self, op: &model::UnOp) -> Result<Type, RuntimeError> {
+    fn visit_unop(&mut self, op: &model::UnOp) -> Eval {
         let operand = op.operand().accept(self)?;
         match op.operator().kind() {
             TokenKind::Plus => match operand {
@@ -369,7 +369,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_binop(&mut self, op: &model::BinOp) -> Result<Type, RuntimeError> {
+    fn visit_binop(&mut self, op: &model::BinOp) -> Eval {
         let lhs = op.lhs().accept(self)?;
         let rhs = op.rhs().accept(self)?;
         match op.operator().kind() {
@@ -389,7 +389,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_logical(&mut self, op: &model::LogicalOp) -> Result<Type, RuntimeError> {
+    fn visit_logical(&mut self, op: &model::LogicalOp) -> Eval {
         // First interpret and check left-hand side to allow for short-circuiting
         let lhs = op.lhs().accept(self)?;
         match op.operator().kind() {
@@ -420,14 +420,14 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_identifier(&mut self, i: &model::Identifier) -> Result<Type, RuntimeError> {
+    fn visit_identifier(&mut self, i: &model::Identifier) -> Eval {
         match self.environment().borrow().load_var(i.name().clone()) {
             Some(value) => Ok(value),
             None => Err(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
         }
     }
 
-    fn visit_func_call(&mut self, c: &model::FuncCall) -> Result<Type, RuntimeError> {
+    fn visit_func_call(&mut self, c: &model::FuncCall) -> Eval {
         let Some(f) = self.environment().borrow().load_func(c.name().clone()) else {
             return Err(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.line()));
         };
