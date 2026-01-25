@@ -1,0 +1,11 @@
+x := 10
+
+func foo()
+    println(x)
+end
+
+func bar(x)
+    foo()
+end
+
+bar(20)
