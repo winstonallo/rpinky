@@ -114,7 +114,7 @@ impl Environment {
     }
 
     /// Assign in the local scope.
-    pub fn store_func_local(&mut self, identifier: &Rc<String>, value: FuncDecl) {
+    pub fn store_func_local(&mut self, identifier: &Rc<String>, value: Function) {
         self.funcs.insert(identifier.clone(), value);
     }
 }

@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     errors::RuntimeError,
     model::{self, Expr},
-    state::Environment,
+    state::{Environment, Function},
     tokens::TokenKind,
     visitor::{ExprVisitor, StmtVisitor},
 };
@@ -296,6 +296,12 @@ impl Interpreter {
             environment: Environment::fork(&self.environment),
         }
     }
+
+    pub fn fork_with_environment(&self, environment: &Rc<RefCell<Environment>>) -> Self {
+        Self {
+            environment: Environment::fork(environment),
+        }
+    }
 }
 
 impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
@@ -407,21 +413,29 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             return Err(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.line()));
         };
 
-        if c.args().len() != f.params().len() {
+        if c.args().len() != f.declaration().params().len() {
             return Err(RuntimeError::new(
-                format!("{} expected {} parameters, got {} arguments", f.name(), f.params().len(), c.args().len()),
+                format!(
+                    "{} expected {} parameters, got {} arguments",
+                    f.declaration().name(),
+                    f.declaration().params().len(),
+                    c.args().len()
+                ),
                 c.line(),
             ));
         }
 
-        let mut fork = self.fork();
-        for (arg, param) in c.args().iter().zip(f.params()) {
+        let mut fork = self.fork_with_environment(f.environment());
+        for (arg, param) in c.args().iter().zip(f.declaration().params()) {
             let val = arg.accept(&mut fork)?;
             fork.environment().borrow_mut().store_var(param.name(), val);
         }
 
-        fork.interpret(f.body())?;
-        Ok(Type::Bool { value: true, line: f.line() })
+        fork.interpret(f.declaration().body())?;
+        Ok(Type::Bool {
+            value: true,
+            line: f.declaration().line(),
+        })
     }
 }
 
@@ -528,7 +542,8 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Result<(), RuntimeError> {
-        self.environment().borrow_mut().store_func(d.name(), d.clone());
+        let env = Environment::fork(self.environment());
+        self.environment().borrow_mut().store_func(d.name(), Function::new(d.clone(), env));
         Ok(())
     }
 
