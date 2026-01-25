@@ -54,7 +54,8 @@ pub enum Stmt {
     While(While),
     For(For),
     FuncDecl(FuncDecl),
-    ExprStmt(Expr),
+    Expr(Expr),
+    Ret(Ret),
 }
 
 impl Stmt {
@@ -67,7 +68,8 @@ impl Stmt {
             Stmt::While(w) => visitor.visit_while(w),
             Stmt::For(f) => visitor.visit_for(f),
             Stmt::FuncDecl(d) => visitor.visit_func_decl(d),
-            Stmt::ExprStmt(e) => visitor.visit_expr_stmt(e),
+            Stmt::Expr(e) => visitor.visit_expr(e),
+            Stmt::Ret(r) => visitor.visit_ret(r),
         }
     }
 }
@@ -505,6 +507,22 @@ impl For {
 
     pub fn body(&self) -> &Stmts {
         &self.body
+    }
+}
+
+/// `"ret" <expr>`
+#[derive(Clone)]
+pub struct Ret {
+    value: Expr,
+}
+
+impl Ret {
+    pub fn new(value: Expr) -> Self {
+        Self { value }
+    }
+
+    pub fn value(&self) -> &Expr {
+        &self.value
     }
 }
 

@@ -21,5 +21,6 @@ pub trait StmtVisitor<T> {
     fn visit_while(&mut self, w: &model::While) -> T;
     fn visit_for(&mut self, f: &model::For) -> T;
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> T;
-    fn visit_expr_stmt(&mut self, e: &model::Expr) -> T;
+    fn visit_expr(&mut self, e: &model::Expr) -> T;
+    fn visit_ret(&mut self, r: &model::Ret) -> T;
 }

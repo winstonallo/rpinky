@@ -4,7 +4,7 @@ use crate::{
     errors::ParseError,
     model::{
         Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, FuncCall, FuncDecl, FuncParam, Identifier, If, IntegerLiteral, LogicalOp, Print,
-        Println, Stmt, Stmts, StringLiteral, UnOp, While,
+        Println, Ret, Stmt, Stmts, StringLiteral, UnOp, While,
     },
     tokens::{Token, TokenKind},
 };
@@ -228,16 +228,16 @@ impl Parser {
 
     /// `<print_stmt> ::= 'print' expr`
     fn print_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print));
-        debug_assert!(tok, "called print_stmt without 'print' token");
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Print));
+        debug_assert!(matched, "called print_stmt without 'print' token");
 
         Ok(Stmt::Print(Print::new(self.expr()?)))
     }
 
     /// `<print_stmt> ::= 'print' expr`
     fn println_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println));
-        debug_assert!(tok, "called println_stmt without 'println' token");
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Println));
+        debug_assert!(matched, "called println_stmt without 'println' token");
 
         Ok(Stmt::Println(Println::new(self.expr()?)))
     }
@@ -248,8 +248,8 @@ impl Parser {
     ///     ( 'else' <stmts> )? 'end'
     /// ```
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::If));
-        debug_assert!(tok, "called if_stmt without 'if' token");
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::If));
+        debug_assert!(matched, "called if_stmt without 'if' token");
 
         let test = self.expr()?;
 
@@ -294,8 +294,8 @@ impl Parser {
 
     /// `<while> ::= 'while' <expr> 'do' <stmts> 'end'`
     fn while_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::While));
-        debug_assert!(tok, "called while_stmt without 'while' token");
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::While));
+        debug_assert!(matched, "called while_stmt without 'while' token");
 
         let test = self.expr()?;
 
@@ -320,8 +320,8 @@ impl Parser {
 
     /// `<for> ::= 'for' <assignment> ',' <expr> ( ',' <expr> )? 'do' <stmts> 'end'`
     fn for_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::For));
-        debug_assert!(tok, "called for_stmt without 'for' token");
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::For));
+        debug_assert!(matched, "called for_stmt without 'for' token");
 
         let var = self.primary()?;
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
@@ -389,9 +389,9 @@ impl Parser {
 
     /// `<func_decl> ::= "func" <name> "(" <params>? ")" <body> "end"`
     fn func_decl_stmt(&mut self) -> Result<Stmt, ParseError> {
-        let tok = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Func));
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Func));
 
-        debug_assert!(tok, "called func_decl_stmt without 'func' token");
+        debug_assert!(matched, "called func_decl_stmt without 'func' token");
 
         let token = self.peek();
         let TokenKind::Identifier { lexeme } = token.kind() else {
@@ -406,6 +406,12 @@ impl Parser {
         }
 
         let params = self.params()?;
+        if params.len() > 255 {
+            return Err(ParseError::new(
+                "a function cannot have more than 32 parameters".into(),
+                self.previous_token().line(),
+            ));
+        }
         let body = self.stmts()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
@@ -413,6 +419,14 @@ impl Parser {
         }
 
         Ok(Stmt::FuncDecl(FuncDecl::new(&Rc::new(name), params, body, line)))
+    }
+
+    /// `"ret" <expr>`
+    fn ret_stmt(&mut self) -> Result<Stmt, ParseError> {
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Ret));
+        debug_assert!(matched, "called ret_stmt without 'ret' token");
+        let value = self.expr()?;
+        Ok(Stmt::Ret(Ret::new(value)))
     }
 
     /// ```ignore
@@ -438,13 +452,14 @@ impl Parser {
             TokenKind::While => self.while_stmt(),
             TokenKind::For => self.for_stmt(),
             TokenKind::Func => self.func_decl_stmt(),
+            TokenKind::Ret => self.ret_stmt(),
             _ => {
                 let lhs = self.expr()?;
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
                     let rhs = self.expr()?;
                     Ok(Stmt::Assignment(Assignment::new(lhs, rhs)))
                 } else {
-                    Ok(Stmt::ExprStmt(lhs))
+                    Ok(Stmt::Expr(lhs))
                 }
             }
         }

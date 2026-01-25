@@ -437,6 +437,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
 
         fork.interpret(f.declaration().body())?;
+
         Ok(Type::Bool {
             value: true,
             line: f.declaration().line(),
@@ -552,9 +553,13 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         Ok(())
     }
 
-    fn visit_expr_stmt(&mut self, e: &model::Expr) -> Result<(), RuntimeError> {
+    fn visit_expr(&mut self, e: &model::Expr) -> Result<(), RuntimeError> {
         e.accept(self)?;
         Ok(())
+    }
+
+    fn visit_ret(&mut self, r: &model::Ret) -> Result<(), RuntimeError> {
+        todo!()
     }
 }
 
