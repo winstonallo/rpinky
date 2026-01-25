@@ -1,11 +1,9 @@
-func factorial(a, b, c, d, e, f)
+func factorial(n)
     mul := 1
-    for 1 := 1, n do
+    for i := 1, n do
         mul := mul * i
     end
-    if mul == 1 then
-        println "The factorial of " + n + " is " + mul
-    end
+    println "The factorial of " + n + " is " + mul
 end
 
-factorial(2)
+factorial(4)

@@ -402,8 +402,24 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_func_call(&mut self, i: &model::FuncCall) -> Result<Type, RuntimeError> {
-        todo!("interpreter::visit_func_call {i:?}")
+    fn visit_func_call(&mut self, c: &model::FuncCall) -> Result<Type, RuntimeError> {
+        let Some(f) = self.environment().borrow().load_func(c.name().clone()) else {
+            return Err(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.line()));
+        };
+        if c.args().len() != f.params().len() {
+            return Err(RuntimeError::new(
+                format!("invalid argument count, expected {}, got {}", f.params().len(), c.args().len()),
+                c.line(),
+            ));
+        }
+
+        let mut fork = self.fork();
+        for (arg, param) in c.args().iter().zip(f.params()) {
+            let val = arg.accept(&mut fork)?;
+            fork.environment().borrow_mut().store_var(param.name(), val);
+        }
+        fork.interpret(f.body())?;
+        Ok(Type::Bool { value: true, line: f.line() })
     }
 }
 
@@ -510,7 +526,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
     }
 
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Result<(), RuntimeError> {
-        self.environment().borrow_mut().store_func(&Rc::new(d.name().into()), d.clone());
+        self.environment().borrow_mut().store_func(&d.name(), d.clone());
         Ok(())
     }
 

@@ -100,7 +100,7 @@ impl Parser {
                     if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
                         return Err(ParseError::new("expected token ')'".into(), token.line()));
                     }
-                    Ok(Expr::FuncCall(FuncCall::new(lexeme.to_string(), args, token.line())))
+                    Ok(Expr::FuncCall(FuncCall::new(&Rc::new(lexeme.to_string()), args, token.line())))
                 } else {
                     Ok(Expr::Identifier(Identifier::new(&Rc::new(lexeme.to_string()), token.line())))
                 }
@@ -373,7 +373,7 @@ impl Parser {
             let Expr::Identifier(identifier) = self.primary()? else {
                 return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
             };
-            params.push(FuncParam::new(identifier.name().as_ref().into(), identifier.line()));
+            params.push(FuncParam::new(&identifier.name().clone(), identifier.line()));
             if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
                 break;
             }
@@ -412,7 +412,7 @@ impl Parser {
             return Err(ParseError::new("expected token 'end' after function body".into(), self.previous_token().line()));
         }
 
-        Ok(Stmt::FuncDecl(FuncDecl::new(name, params, body, line)))
+        Ok(Stmt::FuncDecl(FuncDecl::new(&Rc::new(name), params, body, line)))
     }
 
     /// ```ignore

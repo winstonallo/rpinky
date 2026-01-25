@@ -511,18 +511,23 @@ impl For {
 /// `<funcdecl> ::= "func" <identifier> "(" <params>? ")" <body> "end"`
 #[derive(Clone, Debug)]
 pub struct FuncDecl {
-    name: String,
+    name: Rc<String>,
     params: Vec<FuncParam>,
     body: Stmts,
     line: usize,
 }
 
 impl FuncDecl {
-    pub fn new(name: String, params: Vec<FuncParam>, body: Stmts, line: usize) -> Self {
-        Self { name, params, body, line }
+    pub fn new(name: &Rc<String>, params: Vec<FuncParam>, body: Stmts, line: usize) -> Self {
+        Self {
+            name: name.clone(),
+            params,
+            body,
+            line,
+        }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &Rc<String> {
         &self.name
     }
 
@@ -542,16 +547,16 @@ impl FuncDecl {
 /// `<params> ::= <identifier> ( "," <identifier> )*`
 #[derive(Clone, Debug)]
 pub struct FuncParam {
-    name: String,
+    name: Rc<String>,
     line: usize,
 }
 
 impl FuncParam {
-    pub fn new(name: String, line: usize) -> Self {
-        Self { name, line }
+    pub fn new(name: &Rc<String>, line: usize) -> Self {
+        Self { name: name.clone(), line }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &Rc<String> {
         &self.name
     }
 
@@ -564,17 +569,21 @@ impl FuncParam {
 /// `<args> ::= <expr> ( "," <expr> )*`
 #[derive(Clone, Debug)]
 pub struct FuncCall {
-    name: String,
+    name: Rc<String>,
     args: Vec<Expr>,
     line: usize,
 }
 
 impl FuncCall {
-    pub fn new(name: String, args: Vec<Expr>, line: usize) -> Self {
-        Self { name, args, line }
+    pub fn new(name: &Rc<String>, args: Vec<Expr>, line: usize) -> Self {
+        Self {
+            name: name.clone(),
+            args,
+            line,
+        }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &Rc<String> {
         &self.name
     }
 
