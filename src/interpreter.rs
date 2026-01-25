@@ -301,7 +301,7 @@ impl Interpreter {
 impl From<&Rc<RefCell<Environment>>> for Interpreter {
     fn from(environment: &Rc<RefCell<Environment>>) -> Self {
         Self {
-            environment: Environment::fork(environment),
+            environment: Environment::fork(value),
         }
     }
 }
