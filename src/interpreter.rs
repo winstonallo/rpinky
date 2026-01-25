@@ -396,7 +396,7 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
     }
 
     fn visit_identifier(&mut self, i: &model::Identifier) -> Result<Type, RuntimeError> {
-        match self.environment().borrow().load(i.name().clone()) {
+        match self.environment().borrow().load_var(i.name().clone()) {
             Some(value) => Ok(value),
             None => Err(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
         }
@@ -453,7 +453,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
             return Err(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), rvalue.line()));
         };
 
-        self.environment().borrow_mut().assign(i.name(), rvalue);
+        self.environment().borrow_mut().store_var(i.name(), rvalue);
         Ok(())
     }
 
@@ -490,19 +490,19 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
         let name = i.name().clone();
 
-        fork.environment().borrow_mut().assign_local(&name, Type::Number { value: current, line });
+        fork.environment().borrow_mut().store_var(&name, Type::Number { value: current, line });
 
         if step_value > 0.0 {
             while current <= end_value {
                 fork.interpret(f.body())?;
                 current += step_value;
-                fork.environment().borrow_mut().assign_local(&name, Type::Number { value: current, line });
+                fork.environment().borrow_mut().store_var(&name, Type::Number { value: current, line });
             }
         } else if step_value < 0.0 {
             while current >= end_value {
                 fork.interpret(f.body())?;
                 current += step_value;
-                fork.environment().borrow_mut().assign_local(&name, Type::Number { value: current, line });
+                fork.environment().borrow_mut().store_var(&name, Type::Number { value: current, line });
             }
         }
 
