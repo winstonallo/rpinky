@@ -2,9 +2,32 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{interpreter::Type, model::FuncDecl};
 
+#[derive(Clone)]
+pub struct Function {
+    declaration: FuncDecl,
+    environment: Rc<RefCell<Environment>>,
+}
+
+impl Function {
+    pub fn new(declaration: FuncDecl, environment: Rc<RefCell<Environment>>) -> Self {
+        Self {
+            declaration,
+            environment: environment.clone(),
+        }
+    }
+
+    pub fn declaration(&self) -> &FuncDecl {
+        &self.declaration
+    }
+
+    pub fn environment(&self) -> &Rc<RefCell<Environment>> {
+        &self.environment
+    }
+}
+
 pub struct Environment {
     vars: HashMap<Rc<String>, Type>,
-    funcs: HashMap<Rc<String>, FuncDecl>,
+    funcs: HashMap<Rc<String>, Function>,
     parent: Option<Rc<RefCell<Environment>>>,
 }
 
@@ -29,7 +52,8 @@ impl Environment {
         self.parent.clone()
     }
 
-    /// Attempt to load a variable first from the local environment, then from its parent.
+    /// Attempt to load a variable first from the local environment
+    /// , then from its parent.
     ///
     /// Return `None` if no variable is found with name `identifier`.
     pub fn load_var(&self, identifier: Rc<String>) -> Option<Type> {
@@ -61,10 +85,11 @@ impl Environment {
         self.vars.insert(identifier.clone(), value);
     }
 
-    /// Attempt to load a variable first from the local environment, then from its parent.
+    /// Attempt to load a variable first from the local environment
+    /// , then from its parent.
     ///
     /// Return `None` if no variable is found with name `identifier`.
-    pub fn load_func(&self, identifier: Rc<String>) -> Option<FuncDecl> {
+    pub fn load_func(&self, identifier: Rc<String>) -> Option<Function> {
         if let Some(val) = self.funcs.get(&identifier.clone()) {
             Some(val.clone())
         } else if let Some(parent) = &self.parent {
@@ -76,7 +101,7 @@ impl Environment {
 
     /// Store a variable in the scope where it is defined, or in the local scope if no
     /// previous definition is found.
-    pub fn store_func(&mut self, identifier: &Rc<String>, value: FuncDecl) {
+    pub fn store_func(&mut self, identifier: &Rc<String>, value: Function) {
         if self.vars.contains_key(identifier) {
             self.funcs.insert(identifier.clone(), value);
         } else if let Some(parent) = &self.parent
