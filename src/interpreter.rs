@@ -296,8 +296,10 @@ impl Interpreter {
             environment: Environment::fork(&self.environment),
         }
     }
+}
 
-    pub fn fork_with_environment(&self, environment: &Rc<RefCell<Environment>>) -> Self {
+impl From<&Rc<RefCell<Environment>>> for Interpreter {
+    fn from(environment: &Rc<RefCell<Environment>>) -> Self {
         Self {
             environment: Environment::fork(environment),
         }
@@ -425,7 +427,9 @@ impl ExprVisitor<Result<Type, RuntimeError>> for Interpreter {
             ));
         }
 
-        let mut fork = self.fork_with_environment(f.environment());
+        // lexical scoping, the parent environment is the declaration site,
+        // call site would be dynamic scoping
+        let mut fork = Interpreter::from(f.environment());
 
         for (arg, param) in c.args().iter().zip(f.declaration().params()) {
             let val = arg.accept(&mut fork)?;
