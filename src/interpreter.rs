@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    ops::{ControlFlow, FromResidual},
+    ops::{ControlFlow, Deref, FromResidual},
     rc::Rc,
 };
 
@@ -11,6 +11,24 @@ use crate::{
     tokens::TokenKind,
     visitor::{ExprVisitor, StmtVisitor},
 };
+
+macro_rules! expr {
+    ($expr:expr) => {
+        Eval(Ok(Outcome::Done($expr)))
+    };
+}
+
+macro_rules! ret {
+    ($expr:expr) => {
+        Eval(Ok(Outcome::Return($expr)))
+    };
+}
+
+macro_rules! err {
+    ($expr:expr) => {
+        Eval(Err($expr))
+    };
+}
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub enum Type {
@@ -34,13 +52,20 @@ impl TryFrom<&Type> for f64 {
 }
 
 impl Type {
-    pub fn pow(&self, rhs: Type) -> Result<Type, RuntimeError> {
+    pub fn pow(&self, rhs: Type) -> Eval {
         if matches!(self, Type::String { .. }) || matches!(rhs, Type::String { .. }) {
-            return Err(RuntimeError::new("exponentiation is not implemented for string".into(), self.line()));
+            return err!(RuntimeError::new("exponentiation is not implemented for string".into(), self.line()));
         }
-        let lhs = f64::try_from(self)?;
-        let rhs = f64::try_from(&rhs)?;
-        Ok(Type::Number {
+        let lhs = match f64::try_from(self) {
+            Ok(f) => f,
+            Err(e) => return err!(RuntimeError::new(e.to_string(), self.line())),
+        };
+        let rhs = match f64::try_from(&rhs) {
+            Ok(f) => f,
+            Err(e) => return err!(RuntimeError::new(e.to_string(), self.line())),
+        };
+
+        expr!(Type::Number {
             value: lhs.powf(rhs),
             line: self.line(),
         })
@@ -77,58 +102,70 @@ impl Type {
         }
     }
 
-    pub fn gt(&self, rhs: &Self) -> Result<Type, RuntimeError> {
-        Ok(Type::Bool {
-            value: self.cmp(rhs)?.is_gt(),
-            line: self.line(),
-        })
+    pub fn gt(&self, rhs: &Self) -> Eval {
+        match self.cmp(rhs) {
+            Ok(c) => expr!(Type::Bool {
+                value: c.is_gt(),
+                line: self.line(),
+            }),
+            Err(e) => err!(e),
+        }
     }
 
-    pub fn ge(&self, rhs: &Self) -> Result<Type, RuntimeError> {
-        Ok(Type::Bool {
-            value: self.cmp(rhs)?.is_ge(),
-            line: self.line(),
-        })
+    pub fn ge(&self, rhs: &Self) -> Eval {
+        match self.cmp(rhs) {
+            Ok(c) => expr!(Type::Bool {
+                value: c.is_ge(),
+                line: self.line(),
+            }),
+            Err(e) => err!(e),
+        }
     }
 
-    pub fn lt(&self, rhs: &Self) -> Result<Type, RuntimeError> {
-        Ok(Type::Bool {
-            value: self.cmp(rhs)?.is_lt(),
-            line: self.line(),
-        })
+    pub fn lt(&self, rhs: &Self) -> Eval {
+        match self.cmp(rhs) {
+            Ok(c) => expr!(Type::Bool {
+                value: c.is_lt(),
+                line: self.line(),
+            }),
+            Err(e) => err!(e),
+        }
     }
 
-    pub fn le(&self, rhs: &Self) -> Result<Type, RuntimeError> {
-        Ok(Type::Bool {
-            value: self.cmp(rhs)?.is_le(),
-            line: self.line(),
-        })
+    pub fn le(&self, rhs: &Self) -> Eval {
+        match self.cmp(rhs) {
+            Ok(c) => expr!(Type::Bool {
+                value: c.is_le(),
+                line: self.line(),
+            }),
+            Err(e) => err!(e),
+        }
     }
 
     // Need to implement `eq` like this because `std::cmd::Eq` does not support returning a `Result`.
-    pub fn eq(&self, rhs: &Self) -> Result<Type, RuntimeError> {
+    pub fn eq(&self, rhs: &Self) -> Eval {
         match (self, rhs) {
-            (Type::Bool { value: lhs, line }, Type::Bool { value: rhs, .. }) => Ok(Type::Bool {
+            (Type::Bool { value: lhs, line }, Type::Bool { value: rhs, .. }) => expr!(Type::Bool {
                 value: lhs.eq(rhs),
                 line: *line,
             }),
-            (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => Ok(Type::Bool {
+            (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => expr!(Type::Bool {
                 value: lhs.eq(rhs),
                 line: *line,
             }),
-            (Type::String { value: lhs, line }, Type::String { value: rhs, .. }) => Ok(Type::Bool {
+            (Type::String { value: lhs, line }, Type::String { value: rhs, .. }) => expr!(Type::Bool {
                 value: lhs.eq(rhs),
                 line: *line,
             }),
-            (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => Ok(Type::Bool {
+            (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => expr!(Type::Bool {
                 value: (*lhs as u8 as f64).eq(rhs),
                 line: *line,
             }),
-            (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => Ok(Type::Bool {
+            (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => expr!(Type::Bool {
                 value: lhs.eq(&(*rhs as u8 as f64)),
                 line: *line,
             }),
-            (lhs, rhs) => Err(RuntimeError::new(format!("equality not supported between {rhs} and {lhs}"), lhs.line())),
+            (lhs, rhs) => err!(RuntimeError::new(format!("equality not supported between {rhs} and {lhs}"), lhs.line())),
         }
     }
 }
@@ -156,32 +193,32 @@ impl std::fmt::Display for Type {
 }
 
 impl std::ops::Add for Type {
-    type Output = Result<Self, RuntimeError>;
+    type Output = Eval;
 
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Type::String { value: lhs, line }, rhs) => Ok(Type::String {
+            (Type::String { value: lhs, line }, rhs) => expr!(Type::String {
                 value: format!("{lhs}{rhs}"),
                 line,
             }),
-            (lhs, Type::String { value: rhs, line }) => Ok(Type::String {
+            (lhs, Type::String { value: rhs, line }) => expr!(Type::String {
                 value: format!("{lhs}{rhs}"),
                 line,
             }),
-            (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => Ok(Type::Number { value: lhs + rhs, line }),
-            (Type::Bool { value: lhs, line }, Type::Bool { value: rhs, .. }) => Ok(Type::Number {
+            (Type::Number { value: lhs, line }, Type::Number { value: rhs, .. }) => expr!(Type::Number { value: lhs + rhs, line }),
+            (Type::Bool { value: lhs, line }, Type::Bool { value: rhs, .. }) => expr!(Type::Number {
                 value: lhs as u8 as f64 + rhs as u8 as f64,
                 line,
             }),
-            (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => Ok(Type::Number {
+            (Type::Number { value: lhs, line }, Type::Bool { value: rhs, .. }) => expr!(Type::Number {
                 value: lhs + rhs as u8 as f64,
                 line,
             }),
-            (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => Ok(Type::Number {
+            (Type::Bool { value: lhs, line }, Type::Number { value: rhs, .. }) => expr!(Type::Number {
                 value: lhs as u8 as f64 + rhs,
                 line,
             }),
-            (lhs, rhs) => Err(RuntimeError::new(format!("invalid operands for addition: {lhs}, {rhs}"), rhs.line())),
+            (lhs, rhs) => err!(RuntimeError::new(format!("invalid operands for addition: {lhs}, {rhs}"), rhs.line())),
         }
     }
 }
@@ -189,16 +226,16 @@ impl std::ops::Add for Type {
 macro_rules! impl_numeric_op {
     ($trait:ident, $method:ident, $op:tt, $name:literal, $ty:ty) => {
         impl std::ops::$trait for $ty {
-            type Output = Result<Self, RuntimeError>;
+            type Output = Eval;
 
             fn $method(self, rhs: Self) -> Self::Output {
                 match (self, rhs) {
-                    (Type::Number{value: lhs, line}, Type::Number{value: rhs, ..}) => Ok(Type::Number{value: lhs $op rhs, line}),
-                    (Type::Bool{value: lhs, line}, Type::Bool{value: rhs, ..}) => Ok(Type::Number{value: (lhs as u8 as f64) $op (rhs as u8 as f64), line}),
-                    (Type::Number{value: lhs, line}, Type::Bool{value: rhs, ..}) => Ok(Type::Number{value: lhs $op (rhs as u8 as f64), line}),
-                    (Type::Bool{value: lhs, line}, Type::Number{value: rhs, ..}) => Ok(Type::Number{value: (lhs as u8 as f64) $op rhs, line} ),
-                    (Type::String{line, ..}, _) | (_, Type::String{line, ..}) => Err(RuntimeError::new(concat!($name, " is not implemented for string").into(), line)),
-                    (lhs, rhs) => Err(RuntimeError::new(format!("invalid operands for {}: {lhs}, {rhs}", $name).into(), lhs.line())),
+                    (Type::Number{value: lhs, line}, Type::Number{value: rhs, ..}) => expr!(Type::Number{value: lhs $op rhs, line}),
+                    (Type::Bool{value: lhs, line}, Type::Bool{value: rhs, ..}) => expr!(Type::Number{value: (lhs as u8 as f64) $op (rhs as u8 as f64), line}),
+                    (Type::Number{value: lhs, line}, Type::Bool{value: rhs, ..}) => expr!(Type::Number{value: lhs $op (rhs as u8 as f64), line}),
+                    (Type::Bool{value: lhs, line}, Type::Number{value: rhs, ..}) => expr!(Type::Number{value: (lhs as u8 as f64) $op rhs, line} ),
+                    (Type::String{line, ..}, _) | (_, Type::String{line, ..}) => err!(RuntimeError::new(concat!($name, " is not implemented for string").into(), line)),
+                    (lhs, rhs) => err!(RuntimeError::new(format!("invalid operands for {}: {lhs}, {rhs}", $name).into(), lhs.line())),
                 }
             }
         }
@@ -209,25 +246,25 @@ impl_numeric_op!(Sub, sub, -, "subtraction", Type);
 impl_numeric_op!(Mul, mul, *, "multiplication", Type);
 
 impl std::ops::Div for Type {
-    type Output = Result<Self, RuntimeError>;
+    type Output = Eval;
 
     fn div(self, rhs: Self) -> Self::Output {
         let rhs = match rhs {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
-            Self::String { line, .. } => return Err(RuntimeError::new("division is not implemented for string".into(), line)),
-            Self::None { line } => return Err(RuntimeError::new(format!("cannot divide {self} by {rhs}"), line)),
+            Self::String { line, .. } => return err!(RuntimeError::new("division is not implemented for string".into(), line)),
+            Self::None { line } => return err!(RuntimeError::new(format!("cannot divide {self} by {rhs}"), line)),
         };
         if rhs == 0f64 {
-            return Err(RuntimeError::new("division by zero".into(), self.line()));
+            return err!(RuntimeError::new("division by zero".into(), self.line()));
         }
         let lhs = match self {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
-            Self::String { line, .. } => return Err(RuntimeError::new("division is not implemented for string".into(), line)),
-            Self::None { line } => return Err(RuntimeError::new(format!("cannot divide {self} by {rhs}"), line)),
+            Self::String { line, .. } => return err!(RuntimeError::new("division is not implemented for string".into(), line)),
+            Self::None { line } => return err!(RuntimeError::new(format!("cannot divide {self} by {rhs}"), line)),
         };
-        Ok(Type::Number {
+        expr!(Type::Number {
             value: lhs / rhs,
             line: self.line(),
         })
@@ -235,25 +272,25 @@ impl std::ops::Div for Type {
 }
 
 impl std::ops::Rem for Type {
-    type Output = Result<Self, RuntimeError>;
+    type Output = Eval;
 
     fn rem(self, rhs: Self) -> Self::Output {
         let rhs = match rhs {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
-            Self::String { line, .. } => return Err(RuntimeError::new("modulo is not implemented for string".into(), line)),
-            Self::None { line } => return Err(RuntimeError::new(format!("cannot take modulo of {self} by {rhs}"), line)),
+            Self::String { line, .. } => return err!(RuntimeError::new("modulo is not implemented for string".into(), line)),
+            Self::None { line } => return err!(RuntimeError::new(format!("cannot take modulo of {self} by {rhs}"), line)),
         };
         if rhs == 0f64 {
-            return Err(RuntimeError::new("modulo by zero".into(), self.line()));
+            return err!(RuntimeError::new("modulo by zero".into(), self.line()));
         }
         let lhs = match self {
             Self::Number { value, .. } => value,
             Self::Bool { value, .. } => value as u8 as f64,
-            Self::String { line, .. } => return Err(RuntimeError::new("modulo is not implemented for string".into(), line)),
-            Self::None { line } => return Err(RuntimeError::new(format!("cannot take modulo of {self} by {rhs}"), line)),
+            Self::String { line, .. } => return err!(RuntimeError::new("modulo is not implemented for string".into(), line)),
+            Self::None { line } => return err!(RuntimeError::new(format!("cannot take modulo of {self} by {rhs}"), line)),
         };
-        Ok(Type::Number {
+        expr!(Type::Number {
             value: lhs % rhs,
             line: self.line(),
         })
@@ -265,23 +302,42 @@ impl std::ops::Neg for Type {
 
     fn neg(self) -> Self::Output {
         match self {
-            Type::Number { value, line } => Eval(Ok(Outcome::Done(Type::Number { value: -value, line }))),
-            Type::Bool { line, .. } => Err(RuntimeError::new("bad operand type for unary -: bool".into(), line)),
-            Type::String { line, .. } => Err(RuntimeError::new("bad operand type for unary -: string".into(), line)),
-            Self::None { line } => return Err(RuntimeError::new(format!("bad operand type for unary -: {self}"), line)),
+            Type::Number { value, line } => expr!(Type::Number { value: -value, line }),
+            Type::Bool { line, .. } => err!(RuntimeError::new("bad operand type for unary -: bool".into(), line)),
+            Type::String { line, .. } => err!(RuntimeError::new("bad operand type for unary -: string".into(), line)),
+            Self::None { line } => return err!(RuntimeError::new(format!("bad operand type for unary -: {self}"), line)),
         }
     }
 }
 
 impl std::ops::Not for Type {
-    type Output = Self;
+    type Output = Eval;
 
     fn not(self) -> Self::Output {
         match self {
-            Type::Bool { value, line } => Type::Bool { value: !value, line },
-            Type::Number { value, line } => Type::Bool { value: value == 0f64, line },
-            Type::String { value, line } => Type::Bool { value: value.is_empty(), line },
-            Type::None { line } => Type::Bool { value: true, line },
+            Type::Bool { value, line } => expr!(Type::Bool { value: !value, line }),
+            Type::Number { value, line } => expr!(Type::Bool { value: value == 0f64, line }),
+            Type::String { value, line } => expr!(Type::Bool { value: value.is_empty(), line }),
+            Type::None { line } => expr!(Type::Bool { value: true, line }),
+        }
+    }
+}
+
+impl std::ops::Not for Eval {
+    type Output = Eval;
+
+    fn not(self) -> Self::Output {
+        match self.0.unwrap().as_ref() {
+            Type::Bool { value, line } => expr!(Type::Bool { value: !value, line: *line }),
+            Type::Number { value, line } => expr!(Type::Bool {
+                value: *value == 0f64,
+                line: *line
+            }),
+            Type::String { value, line } => expr!(Type::Bool {
+                value: value.is_empty(),
+                line: *line
+            }),
+            Type::None { line } => expr!(Type::Bool { value: true, line: *line }),
         }
     }
 }
@@ -360,12 +416,12 @@ impl ExprVisitor<Eval> for Interpreter {
         let operand = op.operand().accept(self)?;
         match op.operator().kind() {
             TokenKind::Plus => match operand {
-                Type::String { line, .. } => Err(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
-                _ => Ok(operand),
+                Type::String { line, .. } => err!(RuntimeError::new("bad operand for unary +: 'string'".into(), line)),
+                _ => expr!(operand),
             },
             TokenKind::Minus => -operand,
-            TokenKind::Not => Ok(!operand),
-            _ => Err(RuntimeError::new(format!("unsupported unary operation {op:?}"), operand.line())),
+            TokenKind::Not => !operand,
+            _ => err!(RuntimeError::new(format!("unsupported unary operation {op:?}"), operand.line())),
         }
     }
 
@@ -384,8 +440,8 @@ impl ExprVisitor<Eval> for Interpreter {
             TokenKind::Less => lhs.lt(&rhs),
             TokenKind::LessEqual => lhs.le(&rhs),
             TokenKind::EqualEqual => lhs.eq(&rhs),
-            TokenKind::NotEqual => Ok(!lhs.eq(&rhs)?),
-            _ => Err(RuntimeError::new(format!("unsupported binary operation {op:?}"), lhs.line())),
+            TokenKind::NotEqual => !lhs.eq(&rhs),
+            _ => err!(RuntimeError::new(format!("unsupported binary operation {op:?}"), lhs.line())),
         }
     }
 
@@ -395,45 +451,45 @@ impl ExprVisitor<Eval> for Interpreter {
         match op.operator().kind() {
             TokenKind::And => {
                 if !bool::from(&lhs) {
-                    return Ok(Type::Bool {
+                    return expr!(Type::Bool {
                         value: false,
                         line: lhs.line(),
                     });
                 }
                 let rhs = op.rhs().accept(self)?;
-                Ok(Type::Bool {
+                expr!(Type::Bool {
                     value: bool::from(&rhs),
                     line: lhs.line(),
                 })
             }
             TokenKind::Or => {
                 if bool::from(&lhs) {
-                    return Ok(Type::Bool { value: true, line: lhs.line() });
+                    return expr!(Type::Bool { value: true, line: lhs.line() });
                 }
                 let rhs = op.rhs().accept(self)?;
-                Ok(Type::Bool {
+                expr!(Type::Bool {
                     value: bool::from(&rhs),
                     line: lhs.line(),
                 })
             }
-            _ => Err(RuntimeError::new(format!("unsupported logical operation {op:?}"), lhs.line())),
+            _ => err!(RuntimeError::new(format!("unsupported logical operation {op:?}"), lhs.line())),
         }
     }
 
     fn visit_identifier(&mut self, i: &model::Identifier) -> Eval {
         match self.environment().borrow().load_var(i.name().clone()) {
-            Some(value) => Ok(value),
-            None => Err(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
+            Some(value) => expr!(value),
+            None => err!(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.line())),
         }
     }
 
     fn visit_func_call(&mut self, c: &model::FuncCall) -> Eval {
         let Some(f) = self.environment().borrow().load_func(c.name().clone()) else {
-            return Err(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.line()));
+            return err!(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.line()));
         };
 
         if c.args().len() != f.declaration().params().len() {
-            return Err(RuntimeError::new(
+            return err!(RuntimeError::new(
                 format!(
                     "{} expected {} parameters, got {} arguments",
                     f.declaration().name(),
@@ -454,10 +510,10 @@ impl ExprVisitor<Eval> for Interpreter {
         }
 
         if let Eval(Ok(Outcome::Return(value))) = fork.interpret(f.declaration().body()) {
-            return Ok(value);
+            return expr!(value);
         }
 
-        Ok(Type::Bool {
+        expr!(Type::Bool {
             value: true,
             line: f.declaration().line(),
         })
@@ -466,9 +522,30 @@ impl ExprVisitor<Eval> for Interpreter {
 
 pub struct Eval(Result<Outcome, RuntimeError>);
 
+#[derive(Clone, PartialEq, Debug)]
 pub enum Outcome {
     Done(Type),
     Return(Type),
+}
+
+impl Deref for Outcome {
+    type Target = Type;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Done(t) => t,
+            Self::Return(t) => t,
+        }
+    }
+}
+
+impl AsRef<Type> for Outcome {
+    fn as_ref(&self) -> &Type {
+        match self {
+            Self::Done(t) => t,
+            Self::Return(t) => t,
+        }
+    }
 }
 
 impl std::ops::Try for Eval {
@@ -497,60 +574,60 @@ impl StmtVisitor<Eval> for Interpreter {
     fn visit_print(&mut self, p: &model::Print) -> Eval {
         let value = p.expr().accept(self)?;
         print!("{value}");
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_println(&mut self, p: &model::Println) -> Eval {
         let value = p.expr().accept(self)?;
         println!("{value}");
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_if(&mut self, i: &model::If) -> Eval {
         let test = i.test().accept(self)?;
         let Type::Bool { value, .. } = test else {
-            return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
+            return err!(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
         };
         let mut fork = self.fork(); // create new scope for the block
 
         if value {
             fork.interpret(i.then())?;
-            return Ok(Outcome::Done(Type::None { line: 0 }));
+            return expr!(Type::None { line: 0 });
         }
 
         for elif in i.elif() {
             let test = elif.test().accept(self)?;
             let Type::Bool { value, .. } = test else {
-                return Err(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
+                return err!(RuntimeError::new("if conditition is not a boolean expression".into(), test.line()));
             };
             if value {
                 fork.interpret(elif.then())?;
-                return Ok(Outcome::Done(Type::None { line: 0 }));
+                return expr!(Type::None { line: 0 });
             }
         }
 
         if let Some(r#else) = i.r#else() {
             fork.interpret(r#else)?;
         }
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_assignment(&mut self, a: &model::Assignment) -> Eval {
         let rvalue = a.rhs().accept(self)?;
         let model::Expr::Identifier(i) = a.lhs() else {
-            return Err(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), rvalue.line()));
+            return err!(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), rvalue.line()));
         };
 
         self.environment().borrow_mut().store_var(i.name(), rvalue);
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_while(&mut self, w: &model::While) -> Eval {
         let mut fork = self.fork();
-        while let Ok(Type::Bool { value: true, .. }) = w.test().accept(&mut fork) {
+        while let Ok(Outcome::Done(Type::Bool { value: true, .. })) = w.test().accept(&mut fork).0 {
             fork.interpret(w.body())?;
         }
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_for(&mut self, f: &model::For) -> Eval {
@@ -558,22 +635,25 @@ impl StmtVisitor<Eval> for Interpreter {
 
         let start = f.start().accept(&mut fork)?;
         let end = f.end().accept(&mut fork)?;
-        let step = f.step().as_ref().map(|s| s.accept(&mut fork)).transpose()?;
+        let step = match f.step().as_ref().map(|s| s.accept(&mut fork)).map(|o| o.0).transpose() {
+            Ok(s) => s,
+            Err(e) => return err!(e),
+        };
 
         let Type::Number { value: mut current, line } = start else {
-            return Err(RuntimeError::new("for loop start must be a number".into(), start.line()));
+            return err!(RuntimeError::new("for loop start must be a number".into(), start.line()));
         };
         let Type::Number { value: end_value, .. } = end else {
-            return Err(RuntimeError::new("for loop end must be a number".into(), end.line()));
+            return err!(RuntimeError::new("for loop end must be a number".into(), end.line()));
         };
         let step_value = match step {
-            Some(Type::Number { value, .. }) => value,
+            Some(Outcome::Done(Type::Number { value, .. })) => value,
             None => 1.0,
-            Some(other) => return Err(RuntimeError::new("for loop step must be a number".into(), other.line())),
+            Some(other) => return err!(RuntimeError::new("for loop step must be a number".into(), other.line())),
         };
 
         let Expr::Identifier(i) = f.var() else {
-            return Err(RuntimeError::new(format!("cannot assign to {:?}", f.var()), line));
+            return err!(RuntimeError::new(format!("cannot assign to {:?}", f.var()), line));
         };
 
         let name = i.name().clone();
@@ -594,33 +674,33 @@ impl StmtVisitor<Eval> for Interpreter {
             }
         }
 
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Eval {
         let env = Environment::fork(self.environment());
         self.environment().borrow_mut().store_func(d.name(), Function::new(d.clone(), env));
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_expr(&mut self, e: &model::Expr) -> Eval {
         e.accept(self)?;
-        Ok(Outcome::Done(Type::None { line: 0 }))
+        expr!(Type::None { line: 0 })
     }
 
     fn visit_ret(&mut self, r: &model::Ret) -> Eval {
-        return Ok(Outcome::Return(r.value().accept(self)?));
+        return ret!(r.value().accept(self)?);
     }
 }
 
 /// Evaluate a single expression.
-pub fn expr(ast: &model::Expr) -> Result<Type, RuntimeError> {
+pub fn expr(ast: &model::Expr) -> Result<Outcome, RuntimeError> {
     let mut interpreter = Interpreter::new(Environment::new());
-    ast.accept(&mut interpreter)
+    ast.accept(&mut interpreter).0
 }
 
 /// Interpret a list of statements.
 pub fn interpret(stmts: &model::Stmts) -> Result<Outcome, RuntimeError> {
     let mut interpreter = Interpreter::new(Environment::new());
-    interpreter.interpret(stmts)
+    interpreter.interpret(stmts).0
 }

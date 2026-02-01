@@ -10,7 +10,7 @@ macro_rules! e2e {
             let tokens = lexer.tokenize().unwrap();
             let ast = rpinky::parser::Parser::new(tokens.to_vec()).expr().unwrap();
             let result = rpinky::interpreter::expr(&ast).unwrap();
-            assert_eq!(result, exp);
+            assert_eq!(result, rpinky::interpreter::Outcome::Done(exp));
         }
     };
 }
