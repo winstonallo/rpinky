@@ -305,7 +305,7 @@ impl std::ops::Neg for Type {
             Type::Number { value, line } => expr!(Type::Number { value: -value, line }),
             Type::Bool { line, .. } => err!(RuntimeError::new("bad operand type for unary -: bool".into(), line)),
             Type::String { line, .. } => err!(RuntimeError::new("bad operand type for unary -: string".into(), line)),
-            Self::None { line } => return err!(RuntimeError::new(format!("bad operand type for unary -: {self}"), line)),
+            Self::None { line } => err!(RuntimeError::new(format!("bad operand type for unary -: {self}"), line)),
         }
     }
 }
@@ -689,7 +689,7 @@ impl StmtVisitor<Eval> for Interpreter {
     }
 
     fn visit_ret(&mut self, r: &model::Ret) -> Eval {
-        return ret!(r.value().accept(self)?);
+        ret!(r.value().accept(self)?)
     }
 }
 
