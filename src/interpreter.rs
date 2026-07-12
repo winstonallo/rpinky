@@ -1,6 +1,6 @@
 use std::{
     cell::RefCell,
-    ops::{ControlFlow, Deref, FromResidual},
+    ops::{ControlFlow, Deref, FromResidual, Residual},
     rc::Rc,
 };
 
@@ -562,6 +562,10 @@ impl std::ops::Try for Eval {
             other => ControlFlow::Break(Eval(other)),
         }
     }
+}
+
+impl Residual<Type> for Eval {
+    type TryType = Eval;
 }
 
 impl FromResidual for Eval {
