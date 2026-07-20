@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::{
     debug,
     errors::ParseError,
+    span::Span,
     tokens::{Token, TokenKind},
     visitor::{ExprVisitor, StmtVisitor},
 };
@@ -41,6 +42,22 @@ impl Expr {
             Expr::LogicalOp(op) => visitor.visit_logical(op),
             Expr::Identifier(i) => visitor.visit_identifier(i),
             Expr::FuncCall(f) => visitor.visit_func_call(f),
+        }
+    }
+
+    /// Source span covering the whole expression.
+    pub fn span(&self) -> Span {
+        match self {
+            Expr::Integer(n) => n.span(),
+            Expr::Float(f) => f.span(),
+            Expr::String(s) => s.span(),
+            Expr::Bool(b) => b.span(),
+            Expr::Grouping(inner) => inner.span(),
+            Expr::UnOp(op) => op.span(),
+            Expr::BinOp(op) => op.span(),
+            Expr::LogicalOp(op) => op.span(),
+            Expr::Identifier(i) => i.span(),
+            Expr::FuncCall(f) => f.span(),
         }
     }
 }
@@ -110,7 +127,7 @@ impl std::fmt::Debug for Stmts {
 #[derive(Debug, Clone, Copy)]
 pub struct IntegerLiteral {
     value: f64,
-    line: usize,
+    span: Span,
 }
 
 impl TryFrom<&Token> for IntegerLiteral {
@@ -118,36 +135,36 @@ impl TryFrom<&Token> for IntegerLiteral {
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let TokenKind::IntegerLiteral { lexeme } = token.kind() else {
-            return Err(ParseError::new(format!("expected integer literal, got {token:?}"), token.line()));
+            return Err(ParseError::new(format!("expected integer literal, got {token:?}"), token.span()));
         };
         Ok(Self {
             value: std::str::from_utf8(lexeme.value())
-                .map_err(|e| ParseError::new(format!("invalid UTF-8: {e}"), token.line()))?
+                .map_err(|e| ParseError::new(format!("invalid UTF-8: {e}"), token.span()))?
                 .parse()
-                .map_err(|e| ParseError::new(format!("could not parse as isize: {e}"), token.line()))?,
-            line: token.line(),
+                .map_err(|e| ParseError::new(format!("could not parse as isize: {e}"), token.span()))?,
+            span: token.span(),
         })
     }
 }
 
 impl IntegerLiteral {
-    pub fn new(value: f64, line: usize) -> Self {
-        Self { value, line }
+    pub fn new(value: f64, span: Span) -> Self {
+        Self { value, span }
     }
 
     pub fn value(&self) -> f64 {
         self.value
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct FloatLiteral {
     value: f64,
-    line: usize,
+    span: Span,
 }
 
 impl TryFrom<&Token> for FloatLiteral {
@@ -155,14 +172,14 @@ impl TryFrom<&Token> for FloatLiteral {
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let TokenKind::FloatLiteral { lexeme } = token.kind() else {
-            return Err(ParseError::new(format!("expected float literal, got {token:?}"), token.line()));
+            return Err(ParseError::new(format!("expected float literal, got {token:?}"), token.span()));
         };
         Ok(Self {
             value: std::str::from_utf8(lexeme.value())
-                .map_err(|e| ParseError::new(format!("invalid UTF-8 string: {e}"), token.line()))?
+                .map_err(|e| ParseError::new(format!("invalid UTF-8 string: {e}"), token.span()))?
                 .parse()
-                .map_err(|e| ParseError::new(format!("could not parse as f64: {e}"), token.line()))?,
-            line: token.line(),
+                .map_err(|e| ParseError::new(format!("could not parse as f64: {e}"), token.span()))?,
+            span: token.span(),
         })
     }
 }
@@ -172,15 +189,15 @@ impl FloatLiteral {
         self.value
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct BoolLiteral {
     value: bool,
-    line: usize,
+    span: Span,
 }
 
 impl TryFrom<&Token> for BoolLiteral {
@@ -191,31 +208,31 @@ impl TryFrom<&Token> for BoolLiteral {
             value: match token.kind() {
                 TokenKind::True => true,
                 TokenKind::False => false,
-                _ => return Err(ParseError::new(format!("expected bool literal, got {token:?}"), token.line())),
+                _ => return Err(ParseError::new(format!("expected bool literal, got {token:?}"), token.span())),
             },
-            line: token.line(),
+            span: token.span(),
         })
     }
 }
 
 impl BoolLiteral {
-    pub fn new(value: bool, line: usize) -> Self {
-        Self { value, line }
+    pub fn new(value: bool, span: Span) -> Self {
+        Self { value, span }
     }
 
     pub fn value(&self) -> bool {
         self.value
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct StringLiteral {
     value: String,
-    line: usize,
+    span: Span,
 }
 
 impl TryFrom<&Token> for StringLiteral {
@@ -223,28 +240,28 @@ impl TryFrom<&Token> for StringLiteral {
 
     fn try_from(token: &Token) -> Result<Self, Self::Error> {
         let TokenKind::StringLiteral { lexeme } = token.kind() else {
-            return Err(ParseError::new(format!("expected string literal, got {token:?}"), token.line()));
+            return Err(ParseError::new(format!("expected string literal, got {token:?}"), token.span()));
         };
         Ok(Self {
             // remove the quotes from lexeme
             value: String::from_utf8(lexeme.value()[1..lexeme.value().len() - 1].to_vec())
-                .map_err(|e| ParseError::new(format!("Invalid UTF-8 string: {e}"), token.line()))?,
-            line: token.line(),
+                .map_err(|e| ParseError::new(format!("Invalid UTF-8 string: {e}"), token.span()))?,
+            span: token.span(),
         })
     }
 }
 
 impl StringLiteral {
-    pub fn new(value: String, line: usize) -> Self {
-        Self { value, line }
+    pub fn new(value: String, span: Span) -> Self {
+        Self { value, span }
     }
 
     pub fn value(&self) -> &str {
         &self.value
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -275,6 +292,10 @@ impl BinOp {
     pub fn rhs(&self) -> &Expr {
         &self.rhs
     }
+
+    pub fn span(&self) -> Span {
+        self.lhs.span().merge(self.rhs.span())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -297,6 +318,10 @@ impl UnOp {
 
     pub fn operand(&self) -> &Expr {
         &self.operand
+    }
+
+    pub fn span(&self) -> Span {
+        self.operator.span().merge(self.operand.span())
     }
 }
 
@@ -327,25 +352,29 @@ impl LogicalOp {
     pub fn rhs(&self) -> &Expr {
         &self.rhs
     }
+
+    pub fn span(&self) -> Span {
+        self.lhs.span().merge(self.rhs.span())
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Identifier {
     name: Rc<String>,
-    line: usize,
+    span: Span,
 }
 
 impl Identifier {
-    pub fn new(name: &Rc<String>, line: usize) -> Self {
-        Self { name: name.clone(), line }
+    pub fn new(name: &Rc<String>, span: Span) -> Self {
+        Self { name: name.clone(), span }
     }
 
     pub fn name(&self) -> &Rc<String> {
         &self.name
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -532,16 +561,16 @@ pub struct FuncDecl {
     name: Rc<String>,
     params: Vec<FuncParam>,
     body: Stmts,
-    line: usize,
+    span: Span,
 }
 
 impl FuncDecl {
-    pub fn new(name: &Rc<String>, params: Vec<FuncParam>, body: Stmts, line: usize) -> Self {
+    pub fn new(name: &Rc<String>, params: Vec<FuncParam>, body: Stmts, span: Span) -> Self {
         Self {
             name: name.clone(),
             params,
             body,
-            line,
+            span,
         }
     }
 
@@ -557,8 +586,8 @@ impl FuncDecl {
         &self.body
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -566,20 +595,20 @@ impl FuncDecl {
 #[derive(Clone, Debug)]
 pub struct FuncParam {
     name: Rc<String>,
-    line: usize,
+    span: Span,
 }
 
 impl FuncParam {
-    pub fn new(name: &Rc<String>, line: usize) -> Self {
-        Self { name: name.clone(), line }
+    pub fn new(name: &Rc<String>, span: Span) -> Self {
+        Self { name: name.clone(), span }
     }
 
     pub fn name(&self) -> &Rc<String> {
         &self.name
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -589,15 +618,15 @@ impl FuncParam {
 pub struct FuncCall {
     name: Rc<String>,
     args: Vec<Expr>,
-    line: usize,
+    span: Span,
 }
 
 impl FuncCall {
-    pub fn new(name: &Rc<String>, args: Vec<Expr>, line: usize) -> Self {
+    pub fn new(name: &Rc<String>, args: Vec<Expr>, span: Span) -> Self {
         Self {
             name: name.clone(),
             args,
-            line,
+            span,
         }
     }
 
@@ -609,7 +638,7 @@ impl FuncCall {
         &self.args
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 }

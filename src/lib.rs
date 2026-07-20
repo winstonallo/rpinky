@@ -10,6 +10,7 @@ pub mod interpreter;
 pub mod lexer;
 pub mod model;
 pub mod parser;
+pub mod span;
 pub mod state;
 pub mod tokens;
 pub mod visitor;

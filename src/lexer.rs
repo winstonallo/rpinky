@@ -1,5 +1,6 @@
 use crate::{
     errors::TokenizationError,
+    span::Span,
     tokens::{Lexeme, Token, TokenKind},
 };
 
@@ -7,7 +8,6 @@ pub struct Lexer<'src> {
     source: &'src [u8],
     start: usize,
     curr: usize,
-    line: usize,
     tokens: Vec<Token>,
 }
 
@@ -51,94 +51,103 @@ impl<'src> Lexer<'src> {
             source,
             start: 0,
             curr: 0,
-            line: 1,
             tokens: vec![],
         }
+    }
+
+    /// Span of the token currently being consumed (`[start, curr)`).
+    fn span(&self) -> Span {
+        Span::new(self.start, self.curr)
+    }
+
+    fn push(&mut self, kind: TokenKind) {
+        let span = self.span();
+        self.tokens.push(Token::new(kind, span));
     }
 
     pub fn tokenize(&mut self) -> Result<&Vec<Token>, TokenizationError> {
         while self.curr < self.source.len() {
             self.start = self.curr;
             let Some(c) = self.advance() else {
-                self.tokens.push(Token::new(TokenKind::Eof, self.line));
+                self.tokens.push(Token::new(TokenKind::Eof, Span::new(self.curr, self.curr)));
                 return Ok(&self.tokens);
             };
 
             match c {
-                b'\n' => self.line += 1,
+                b'\n' => (),
                 ch if ch.is_ascii_whitespace() => (),
-                b'(' => self.tokens.push(Token::new(TokenKind::LParen, self.line)),
-                b')' => self.tokens.push(Token::new(TokenKind::RParen, self.line)),
-                b'{' => self.tokens.push(Token::new(TokenKind::LCurly, self.line)),
-                b'}' => self.tokens.push(Token::new(TokenKind::RCurly, self.line)),
-                b'[' => self.tokens.push(Token::new(TokenKind::LSquare, self.line)),
-                b']' => self.tokens.push(Token::new(TokenKind::RSquare, self.line)),
-                b'.' => self.tokens.push(Token::new(TokenKind::Dot, self.line)),
-                b',' => self.tokens.push(Token::new(TokenKind::Comma, self.line)),
-                b'+' => self.tokens.push(Token::new(TokenKind::Plus, self.line)),
+                b'(' => self.push(TokenKind::LParen),
+                b')' => self.push(TokenKind::RParen),
+                b'{' => self.push(TokenKind::LCurly),
+                b'}' => self.push(TokenKind::RCurly),
+                b'[' => self.push(TokenKind::LSquare),
+                b']' => self.push(TokenKind::RSquare),
+                b'.' => self.push(TokenKind::Dot),
+                b',' => self.push(TokenKind::Comma),
+                b'+' => self.push(TokenKind::Plus),
                 b'-' => {
                     if self.match_curr(b'-') {
                         while self.peek().is_some_and(|c| c != b'\n') {
                             self.advance();
                         }
                     } else {
-                        self.tokens.push(Token::new(TokenKind::Minus, self.line));
+                        self.push(TokenKind::Minus);
                     }
                 }
-                b'*' => self.tokens.push(Token::new(TokenKind::Star, self.line)),
-                b'^' => self.tokens.push(Token::new(TokenKind::Caret, self.line)),
-                b'/' => self.tokens.push(Token::new(TokenKind::Slash, self.line)),
-                b';' => self.tokens.push(Token::new(TokenKind::Semicolon, self.line)),
-                b'?' => self.tokens.push(Token::new(TokenKind::Question, self.line)),
-                b'%' => self.tokens.push(Token::new(TokenKind::Mod, self.line)),
+                b'*' => self.push(TokenKind::Star),
+                b'^' => self.push(TokenKind::Caret),
+                b'/' => self.push(TokenKind::Slash),
+                b';' => self.push(TokenKind::Semicolon),
+                b'?' => self.push(TokenKind::Question),
+                b'%' => self.push(TokenKind::Mod),
                 b'=' => {
                     if self.match_curr(b'=') {
-                        self.tokens.push(Token::new(TokenKind::EqualEqual, self.line));
+                        self.push(TokenKind::EqualEqual);
                     } else {
-                        self.tokens.push(Token::new(TokenKind::Equal, self.line));
+                        self.push(TokenKind::Equal);
                     }
                 }
                 b'~' => {
                     if self.match_curr(b'=') {
-                        self.tokens.push(Token::new(TokenKind::NotEqual, self.line));
+                        self.push(TokenKind::NotEqual);
                     } else {
-                        self.tokens.push(Token::new(TokenKind::Not, self.line));
+                        self.push(TokenKind::Not);
                     }
                 }
                 b'<' => {
                     if self.match_curr(b'=') {
-                        self.tokens.push(Token::new(TokenKind::LessEqual, self.line));
+                        self.push(TokenKind::LessEqual);
                     } else if self.match_curr(b'<') {
-                        self.tokens.push(Token::new(TokenKind::LessLess, self.line));
+                        self.push(TokenKind::LessLess);
                     } else {
-                        self.tokens.push(Token::new(TokenKind::Less, self.line));
+                        self.push(TokenKind::Less);
                     }
                 }
                 b'>' => {
                     if self.match_curr(b'=') {
-                        self.tokens.push(Token::new(TokenKind::GreaterEqual, self.line));
+                        self.push(TokenKind::GreaterEqual);
                     } else if self.match_curr(b'>') {
-                        self.tokens.push(Token::new(TokenKind::GreaterGreater, self.line));
+                        self.push(TokenKind::GreaterGreater);
                     } else {
-                        self.tokens.push(Token::new(TokenKind::Greater, self.line));
+                        self.push(TokenKind::Greater);
                     }
                 }
                 b':' => {
                     if self.match_curr(b'=') {
-                        self.tokens.push(Token::new(TokenKind::Assign, self.line));
+                        self.push(TokenKind::Assign);
                     } else {
-                        self.tokens.push(Token::new(TokenKind::Colon, self.line));
+                        self.push(TokenKind::Colon);
                     }
                 }
                 b'0'..=b'9' => self.handle_number_literal()?,
                 b'\'' => self.handle_string_literal(b'\'')?,
                 b'"' => self.handle_string_literal(b'"')?,
                 b'a'..=b'z' | b'A'..=b'Z' | b'_' => self.handle_identifier()?,
-                _ => return Err(TokenizationError::new(format!("unexpected character: '{}'", c as char), self.line)),
+                _ => return Err(TokenizationError::new(format!("unexpected character: '{}'", c as char), self.span())),
             }
         }
 
-        self.tokens.push(Token::new(TokenKind::Eof, self.line));
+        self.tokens.push(Token::new(TokenKind::Eof, Span::new(self.curr, self.curr)));
         Ok(&self.tokens)
     }
 
@@ -147,15 +156,12 @@ impl<'src> Lexer<'src> {
             self.advance();
         }
 
-        if let Some(keyword) = match_reserved_keyword(&self.source[self.start..self.curr], self.line) {
+        if let Some(keyword) = match_reserved_keyword(&self.source[self.start..self.curr], self.span()) {
             self.tokens.push(keyword);
         } else {
-            self.tokens.push(Token::new(
-                TokenKind::Identifier {
-                    lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
-                },
-                self.line,
-            ));
+            self.push(TokenKind::Identifier {
+                lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
+            });
         }
         Ok(())
     }
@@ -171,24 +177,18 @@ impl<'src> Lexer<'src> {
                 self.advance();
             }
             if self.peek().is_some_and(|c| c.is_ascii_alphabetic() || c == b'_') {
-                return Err(TokenizationError::new("invalid character in number literal".into(), self.line));
+                return Err(TokenizationError::new("invalid character in number literal".into(), self.span()));
             }
-            self.tokens.push(Token::new(
-                TokenKind::FloatLiteral {
-                    lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
-                },
-                self.line,
-            ));
+            self.push(TokenKind::FloatLiteral {
+                lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
+            });
         } else {
             if self.peek().is_some_and(|c| c.is_ascii_alphabetic() || c == b'_') {
-                return Err(TokenizationError::new("invalid character in number literal".into(), self.line));
+                return Err(TokenizationError::new("invalid character in number literal".into(), self.span()));
             }
-            self.tokens.push(Token::new(
-                TokenKind::IntegerLiteral {
-                    lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
-                },
-                self.line,
-            ));
+            self.push(TokenKind::IntegerLiteral {
+                lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
+            });
         }
         Ok(())
     }
@@ -198,15 +198,12 @@ impl<'src> Lexer<'src> {
             self.advance();
         }
         if self.curr >= self.source.len() || self.peek().is_some_and(|c| c == b'\n') {
-            return Err(TokenizationError::new("unterminated string literal".into(), self.line));
+            return Err(TokenizationError::new("unterminated string literal".into(), self.span()));
         }
         self.advance();
-        self.tokens.push(Token::new(
-            TokenKind::StringLiteral {
-                lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
-            },
-            self.line,
-        ));
+        self.push(TokenKind::StringLiteral {
+            lexeme: Lexeme::new((self.source[self.start..self.curr]).to_vec()),
+        });
         Ok(())
     }
 
@@ -245,27 +242,28 @@ impl<'src> Lexer<'src> {
     }
 }
 
-pub fn match_reserved_keyword(token: &[u8], line: usize) -> Option<Token> {
-    match token {
-        b"if" => Some(Token::new(TokenKind::If, line)),
-        b"else" => Some(Token::new(TokenKind::Else, line)),
-        b"then" => Some(Token::new(TokenKind::Then, line)),
-        b"true" => Some(Token::new(TokenKind::True, line)),
-        b"false" => Some(Token::new(TokenKind::False, line)),
-        b"and" => Some(Token::new(TokenKind::And, line)),
-        b"or" => Some(Token::new(TokenKind::Or, line)),
-        b"while" => Some(Token::new(TokenKind::While, line)),
-        b"do" => Some(Token::new(TokenKind::Do, line)),
-        b"for" => Some(Token::new(TokenKind::For, line)),
-        b"func" => Some(Token::new(TokenKind::Func, line)),
-        b"null" => Some(Token::new(TokenKind::Null, line)),
-        b"end" => Some(Token::new(TokenKind::End, line)),
-        b"print" => Some(Token::new(TokenKind::Print, line)),
-        b"println" => Some(Token::new(TokenKind::Println, line)),
-        b"ret" => Some(Token::new(TokenKind::Ret, line)),
-        b"elif" => Some(Token::new(TokenKind::Elif, line)),
-        _ => None,
-    }
+pub fn match_reserved_keyword(token: &[u8], span: Span) -> Option<Token> {
+    let kind = match token {
+        b"if" => TokenKind::If,
+        b"else" => TokenKind::Else,
+        b"then" => TokenKind::Then,
+        b"true" => TokenKind::True,
+        b"false" => TokenKind::False,
+        b"and" => TokenKind::And,
+        b"or" => TokenKind::Or,
+        b"while" => TokenKind::While,
+        b"do" => TokenKind::Do,
+        b"for" => TokenKind::For,
+        b"func" => TokenKind::Func,
+        b"null" => TokenKind::Null,
+        b"end" => TokenKind::End,
+        b"print" => TokenKind::Print,
+        b"println" => TokenKind::Println,
+        b"ret" => TokenKind::Ret,
+        b"elif" => TokenKind::Elif,
+        _ => return None,
+    };
+    Some(Token::new(kind, span))
 }
 
 #[cfg(test)]
@@ -291,10 +289,10 @@ mod tests {
                     TokenKind::IntegerLiteral {
                         lexeme: Lexeme::new(b"2".to_vec())
                     },
-                    1
+                    Span::new(0, 1)
                 ),
-                Token::new(TokenKind::RParen, 1),
-                Token::new(TokenKind::Eof, 1),
+                Token::new(TokenKind::RParen, Span::new(1, 2)),
+                Token::new(TokenKind::Eof, Span::new(2, 2)),
             ]
         );
     }

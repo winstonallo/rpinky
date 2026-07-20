@@ -14,7 +14,7 @@ fn main() {
     let mut lexer = Lexer::new(source.as_bytes());
     let tokens = match lexer.tokenize() {
         Ok(t) => t,
-        Err(e) => return eprintln!("{e}"),
+        Err(e) => return eprintln!("{}", rpinky::errors::report(&source, e.span(), e.message())),
     };
 
     if args.token_dump() {
@@ -28,7 +28,7 @@ fn main() {
 
     let ast = match parser.parse() {
         Ok(a) => a,
-        Err(e) => return eprintln!("{e}"),
+        Err(e) => return eprintln!("{}", rpinky::errors::report(&source, e.span(), e.message())),
     };
 
     if args.ast_dump() {
@@ -37,6 +37,6 @@ fn main() {
 
     match interpreter::interpret(&ast) {
         Ok(..) => (),
-        Err(e) => eprintln!("{e}"),
+        Err(e) => eprintln!("{}", rpinky::errors::report(&source, e.span(), e.message())),
     };
 }

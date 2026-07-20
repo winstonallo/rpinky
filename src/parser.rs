@@ -89,7 +89,7 @@ impl Parser {
                 self.advance();
                 let expr = self.expr()?;
                 if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
-                    return Err(ParseError::new("expected closing ')'".into(), token.line()));
+                    return Err(ParseError::new("expected closing ')'".into(), token.span()));
                 }
                 Ok(Expr::Grouping(Box::new(expr)))
             }
@@ -98,14 +98,14 @@ impl Parser {
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::LParen)) {
                     let args = self.args()?;
                     if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
-                        return Err(ParseError::new("expected token ')'".into(), token.line()));
+                        return Err(ParseError::new("expected token ')'".into(), token.span()));
                     }
-                    Ok(Expr::FuncCall(FuncCall::new(&Rc::new(lexeme.to_string()), args, token.line())))
+                    Ok(Expr::FuncCall(FuncCall::new(&Rc::new(lexeme.to_string()), args, token.span())))
                 } else {
-                    Ok(Expr::Identifier(Identifier::new(&Rc::new(lexeme.to_string()), token.line())))
+                    Ok(Expr::Identifier(Identifier::new(&Rc::new(lexeme.to_string()), token.span())))
                 }
             }
-            _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.line())),
+            _ => Err(ParseError::new(format!("unexpected {}", token.kind()), token.span())),
         }
     }
 
@@ -250,13 +250,14 @@ impl Parser {
     fn if_stmt(&mut self) -> Result<Stmt, ParseError> {
         let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::If));
         debug_assert!(matched, "called if_stmt without 'if' token");
+        let open = self.previous_token().span();
 
         let test = self.expr()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Then)) {
             return Err(ParseError::new(
                 "expected token 'then' before if statement body".into(),
-                self.previous_token().line(),
+                self.previous_token().span(),
             ));
         }
 
@@ -269,7 +270,7 @@ impl Parser {
             if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Then)) {
                 return Err(ParseError::new(
                     "expected token 'then' before elif statement body".into(),
-                    self.previous_token().line(),
+                    self.previous_token().span(),
                 ));
             }
 
@@ -283,10 +284,7 @@ impl Parser {
         };
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
-            return Err(ParseError::new(
-                "expected token 'end' after statement body".into(),
-                self.previous_token().line(),
-            ));
+            return Err(ParseError::new("missing 'end' to close this if statement".into(), open));
         }
 
         Ok(Stmt::If(If::new(test, then, elif, r#else)))
@@ -296,23 +294,21 @@ impl Parser {
     fn while_stmt(&mut self) -> Result<Stmt, ParseError> {
         let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::While));
         debug_assert!(matched, "called while_stmt without 'while' token");
+        let open = self.previous_token().span();
 
         let test = self.expr()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
             return Err(ParseError::new(
                 "expected token 'do' before while loop body".into(),
-                self.previous_token().line(),
+                self.previous_token().span(),
             ));
         }
 
         let body = self.stmts()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
-            return Err(ParseError::new(
-                "expected token 'end' after while loop body".into(),
-                self.previous_token().line(),
-            ));
+            return Err(ParseError::new("missing 'end' to close this while loop".into(), open));
         }
 
         Ok(Stmt::While(While::new(test, body)))
@@ -322,17 +318,18 @@ impl Parser {
     fn for_stmt(&mut self) -> Result<Stmt, ParseError> {
         let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::For));
         debug_assert!(matched, "called for_stmt without 'for' token");
+        let open = self.previous_token().span();
 
         let var = self.primary()?;
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
-            return Err(ParseError::new("expected assignment after 'for' token".into(), self.previous_token().line()));
+            return Err(ParseError::new("expected assignment after 'for' token".into(), self.previous_token().span()));
         }
         let start = self.expr()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
             return Err(ParseError::new(
                 "expected ',' after for loop initialization statement".into(),
-                self.previous_token().line(),
+                self.previous_token().span(),
             ));
         }
 
@@ -344,12 +341,12 @@ impl Parser {
         }
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Do)) {
-            return Err(ParseError::new("expected token 'do' before for loop body".into(), self.previous_token().line()));
+            return Err(ParseError::new("expected token 'do' before for loop body".into(), self.previous_token().span()));
         }
 
         let body = self.stmts()?;
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
-            return Err(ParseError::new("expected token 'end' after for loop body".into(), self.previous_token().line()));
+            return Err(ParseError::new("missing 'end' to close this for loop".into(), open));
         }
 
         Ok(Stmt::For(For::new(var, start, end, step, body)))
@@ -371,9 +368,9 @@ impl Parser {
         let mut params = vec![];
         while !matches!(self.peek().kind(), TokenKind::RParen) {
             let Expr::Identifier(identifier) = self.primary()? else {
-                return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
+                return Err(ParseError::new("expected identifier".into(), self.previous_token().span()));
             };
-            params.push(FuncParam::new(&identifier.name().clone(), identifier.line()));
+            params.push(FuncParam::new(&identifier.name().clone(), identifier.span()));
             if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Comma)) {
                 break;
             }
@@ -381,7 +378,7 @@ impl Parser {
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::RParen)) {
             return Err(ParseError::new(
                 "expected token ')' or ',' after parameter".into(),
-                self.previous_token().line(),
+                self.previous_token().span(),
             ));
         }
         Ok(params)
@@ -392,33 +389,34 @@ impl Parser {
         let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Func));
 
         debug_assert!(matched, "called func_decl_stmt without 'func' token");
+        let open = self.previous_token().span();
 
         let token = self.peek();
         let TokenKind::Identifier { lexeme } = token.kind() else {
-            return Err(ParseError::new("expected identifier".into(), self.previous_token().line()));
+            return Err(ParseError::new("expected identifier".into(), self.previous_token().span()));
         };
         let name = lexeme.to_string();
-        let line = token.line();
+        let span = token.span();
         self.advance();
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::LParen)) {
-            return Err(ParseError::new("expected token '(' after function name".into(), self.previous_token().line()));
+            return Err(ParseError::new("expected token '(' after function name".into(), self.previous_token().span()));
         }
 
         let params = self.params()?;
         if params.len() > 255 {
             return Err(ParseError::new(
                 "a function cannot have more than 32 parameters".into(),
-                self.previous_token().line(),
+                self.previous_token().span(),
             ));
         }
         let body = self.stmts()?;
 
         if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::End)) {
-            return Err(ParseError::new("expected token 'end' after function body".into(), self.previous_token().line()));
+            return Err(ParseError::new("missing 'end' to close this function".into(), open));
         }
 
-        Ok(Stmt::FuncDecl(FuncDecl::new(&Rc::new(name), params, body, line)))
+        Ok(Stmt::FuncDecl(FuncDecl::new(&Rc::new(name), params, body, span)))
     }
 
     /// `"ret" <expr>`

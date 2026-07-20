@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::lexer::unescape;
+use crate::{lexer::unescape, span::Span};
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Lexeme {
@@ -44,16 +44,16 @@ impl std::fmt::Debug for Lexeme {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     kind: TokenKind,
-    line: usize,
+    span: Span,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, line: usize) -> Self {
-        Self { kind, line }
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Self { kind, span }
     }
 
-    pub fn line(&self) -> usize {
-        self.line
+    pub fn span(&self) -> Span {
+        self.span
     }
 
     pub fn kind(&self) -> &TokenKind {
