@@ -1,11 +1,15 @@
-for x := 1, 15 do
-    if x % 3 == 0 and x % 5 == 0 then
-        println "FIZZBUZZ"
-    elif x % 3 == 0 then
-        println "fizz"
-    elif x % 5 == 0 then
-        println "buzz"
-    else
-        println x
+func fizzbuzz(n)
+    for x := 1, n do
+        if x % 3 == 0 and x % 5 == 0 then
+            println "FIZZBUZZ"
+        elif x % 3 == 0 then
+            println "fizz"
+        elif x % 5 == 0 then
+            println "buzz"
+        else
+            println x
+        end
     end
 end
+
+fizzbuzz(30)
