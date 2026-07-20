@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::io::sink;
+use std::rc::Rc;
+
 macro_rules! e2e {
     ($src:literal, $exp:expr, $name:ident) => {
         #[test]
@@ -7,7 +11,7 @@ macro_rules! e2e {
             let mut lexer = rpinky::lexer::Lexer::new(src);
             let tokens = lexer.tokenize().unwrap();
             let ast = rpinky::parser::Parser::new(tokens.to_vec()).expr().unwrap();
-            let result = rpinky::interpreter::expr(&ast).unwrap();
+            let result = rpinky::interpreter::expr(&ast, Rc::new(RefCell::new(sink()))).unwrap();
             assert_eq!(result, rpinky::interpreter::Outcome::Done(exp));
         }
     };
@@ -20,7 +24,7 @@ macro_rules! e2e_runtime_error {
             let mut lexer = rpinky::lexer::Lexer::new($src);
             let tokens = lexer.tokenize().unwrap();
             let ast = rpinky::parser::Parser::new(tokens.to_vec()).expr().unwrap();
-            let err = rpinky::interpreter::expr(&ast).unwrap_err();
+            let err = rpinky::interpreter::expr(&ast, Rc::new(RefCell::new(sink()))).unwrap_err();
             assert_eq!(err.message(), $msg);
         }
     };

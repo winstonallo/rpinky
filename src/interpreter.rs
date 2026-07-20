@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    io::Write,
     ops::{ControlFlow, FromResidual, Residual},
     rc::Rc,
 };
@@ -75,9 +76,7 @@ impl Type {
     pub fn cmp(&self, rhs: &Self) -> Result<std::cmp::Ordering, String> {
         match (self, rhs) {
             (Type::Bool(lhs), Type::Bool(rhs)) => Ok(lhs.cmp(rhs)),
-            (Type::Number(lhs), Type::Number(rhs)) => lhs
-                .partial_cmp(rhs)
-                .ok_or_else(|| format!("comparison not supported between {lhs} and {rhs}")),
+            (Type::Number(lhs), Type::Number(rhs)) => lhs.partial_cmp(rhs).ok_or_else(|| format!("comparison not supported between {lhs} and {rhs}")),
             (Type::String(lhs), Type::String(rhs)) => Ok(lhs.cmp(rhs)),
             (Type::Bool(lhs), Type::Number(rhs)) => (*lhs as u8 as f64)
                 .partial_cmp(rhs)
@@ -253,11 +252,12 @@ impl std::ops::Not for Type {
 /// Visitor for evaluating AST.
 pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
+    out: Rc<RefCell<dyn Write>>,
 }
 
 impl Interpreter {
-    pub fn new(environment: Rc<RefCell<Environment>>) -> Self {
-        Self { environment }
+    pub fn new(environment: Rc<RefCell<Environment>>, out: Rc<RefCell<dyn Write>>) -> Self {
+        Self { environment, out }
     }
 
     pub fn interpret(&mut self, stmts: &model::Stmts) -> Eval {
@@ -275,14 +275,7 @@ impl Interpreter {
     pub fn fork(&self) -> Self {
         Self {
             environment: Environment::fork(&self.environment),
-        }
-    }
-}
-
-impl From<&Rc<RefCell<Environment>>> for Interpreter {
-    fn from(environment: &Rc<RefCell<Environment>>) -> Self {
-        Self {
-            environment: Environment::fork(environment),
+            out: self.out.clone(),
         }
     }
 }
@@ -391,18 +384,18 @@ impl ExprVisitor<Eval> for Interpreter {
 
         // lexical scoping, the parent environment is the declaration site,
         // call site would be dynamic scoping
-        let mut fork = Interpreter::from(f.environment());
+        let mut fork = Interpreter::new(f.environment().clone(), self.out.clone());
 
         for (arg, param) in c.args().iter().zip(f.declaration().params()) {
-            let val = arg.accept(&mut fork)?;
+            let val = arg.accept(self)?;
             fork.environment().borrow_mut().store_var_local(param.name(), val);
         }
 
-        if let Eval(Ok(Outcome::Return(value))) = fork.interpret(f.declaration().body()) {
-            return expr!(value);
+        match fork.interpret(f.declaration().body()) {
+            Eval(Ok(Outcome::Return(val))) => expr!(val),
+            Eval(Ok(Outcome::Done(_))) => expr!(Type::Bool(true)),
+            Eval(Err(e)) => err!(e),
         }
-
-        expr!(Type::Bool(true))
     }
 }
 
@@ -443,13 +436,17 @@ impl FromResidual for Eval {
 impl StmtVisitor<Eval> for Interpreter {
     fn visit_print(&mut self, p: &model::Print) -> Eval {
         let value = p.expr().accept(self)?;
-        print!("{value}");
+        if let Err(e) = write!(self.out.borrow_mut(), "{value}") {
+            return err!(RuntimeError::new(format!("write failure: {e}"), p.expr().span()));
+        }
         expr!(Type::None)
     }
 
     fn visit_println(&mut self, p: &model::Println) -> Eval {
         let value = p.expr().accept(self)?;
-        println!("{value}");
+        if let Err(e) = writeln!(self.out.borrow_mut(), "{value}") {
+            return err!(RuntimeError::new(format!("write failure: {e}"), p.expr().span()));
+        }
         expr!(Type::None)
     }
 
@@ -574,13 +571,13 @@ impl StmtVisitor<Eval> for Interpreter {
 }
 
 /// Evaluate a single expression.
-pub fn expr(ast: &model::Expr) -> Result<Outcome, RuntimeError> {
-    let mut interpreter = Interpreter::new(Environment::new());
+pub fn expr(ast: &model::Expr, out: Rc<RefCell<dyn Write>>) -> Result<Outcome, RuntimeError> {
+    let mut interpreter = Interpreter::new(Environment::new(), out);
     ast.accept(&mut interpreter).0
 }
 
 /// Interpret a list of statements.
-pub fn interpret(stmts: &model::Stmts) -> Result<Outcome, RuntimeError> {
-    let mut interpreter = Interpreter::new(Environment::new());
+pub fn interpret(stmts: &model::Stmts, out: Rc<RefCell<dyn Write>>) -> Result<Outcome, RuntimeError> {
+    let mut interpreter = Interpreter::new(Environment::new(), out);
     interpreter.interpret(stmts).0
 }
