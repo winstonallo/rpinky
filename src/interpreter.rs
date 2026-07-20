@@ -327,17 +327,20 @@ impl std::ops::Not for Eval {
     type Output = Eval;
 
     fn not(self) -> Self::Output {
-        match self.0.unwrap().as_ref() {
-            Type::Bool { value, line } => expr!(Type::Bool { value: !value, line: *line }),
-            Type::Number { value, line } => expr!(Type::Bool {
-                value: *value == 0f64,
-                line: *line
-            }),
-            Type::String { value, line } => expr!(Type::Bool {
-                value: value.is_empty(),
-                line: *line
-            }),
-            Type::None { line } => expr!(Type::Bool { value: true, line: *line }),
+        match self.0 {
+            Ok(x) => match x.as_ref() {
+                Type::Bool { value, line } => expr!(Type::Bool { value: !value, line: *line }),
+                Type::Number { value, line } => expr!(Type::Bool {
+                    value: *value == 0f64,
+                    line: *line
+                }),
+                Type::String { value, line } => expr!(Type::Bool {
+                    value: value.is_empty(),
+                    line: *line
+                }),
+                Type::None { line } => expr!(Type::Bool { value: true, line: *line }),
+            },
+            Err(e) => err!(RuntimeError::new(format!("invalid unary operation 'not' for error value {e}"), 0)),
         }
     }
 }

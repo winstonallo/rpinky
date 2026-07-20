@@ -270,6 +270,7 @@ pub fn match_reserved_keyword(token: &[u8], line: usize) -> Option<Token> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]
