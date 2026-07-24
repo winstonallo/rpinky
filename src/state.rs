@@ -5,11 +5,11 @@ use crate::{interpreter::Type, model::FuncDecl};
 #[derive(Clone)]
 pub struct Function {
     declaration: FuncDecl,
-    environment: Rc<RefCell<Environment>>,
+    environment: Rc<RefCell<Scope>>,
 }
 
 impl Function {
-    pub fn new(declaration: FuncDecl, environment: Rc<RefCell<Environment>>) -> Self {
+    pub fn new(declaration: FuncDecl, environment: Rc<RefCell<Scope>>) -> Self {
         Self {
             declaration,
             environment: environment.clone(),
@@ -20,18 +20,18 @@ impl Function {
         &self.declaration
     }
 
-    pub fn environment(&self) -> &Rc<RefCell<Environment>> {
+    pub fn environment(&self) -> &Rc<RefCell<Scope>> {
         &self.environment
     }
 }
 
-pub struct Environment {
+pub struct Scope {
     vars: HashMap<Rc<String>, Type>,
     funcs: HashMap<Rc<String>, Function>,
-    parent: Option<Rc<RefCell<Environment>>>,
+    parent: Option<Rc<RefCell<Scope>>>,
 }
 
-impl Environment {
+impl Scope {
     pub fn new() -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(Self {
             vars: HashMap::new(),

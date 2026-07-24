@@ -9,7 +9,7 @@ use crate::{
     errors::RuntimeError,
     model::{self, Expr},
     span::Span,
-    state::{Environment, Function},
+    state::{Function, Scope},
     tokens::TokenKind,
     visitor::{ExprVisitor, StmtVisitor},
 };
@@ -251,12 +251,12 @@ impl std::ops::Not for Type {
 
 /// Visitor for evaluating AST.
 pub struct Interpreter {
-    environment: Rc<RefCell<Environment>>,
+    environment: Rc<RefCell<Scope>>,
     out: Rc<RefCell<dyn Write>>,
 }
 
 impl Interpreter {
-    pub fn new(environment: Rc<RefCell<Environment>>, out: Rc<RefCell<dyn Write>>) -> Self {
+    pub fn new(environment: Rc<RefCell<Scope>>, out: Rc<RefCell<dyn Write>>) -> Self {
         Self { environment, out }
     }
 
@@ -268,13 +268,13 @@ impl Interpreter {
         Eval(Ok(Outcome::Done(Type::None)))
     }
 
-    pub fn environment(&mut self) -> &Rc<RefCell<Environment>> {
+    pub fn environment(&mut self) -> &Rc<RefCell<Scope>> {
         &self.environment
     }
 
     pub fn fork(&self) -> Self {
         Self {
-            environment: Environment::fork(&self.environment),
+            environment: Scope::fork(&self.environment),
             out: self.out.clone(),
         }
     }
@@ -565,7 +565,7 @@ impl StmtVisitor<Eval> for Interpreter {
     }
 
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Eval {
-        let env = Environment::fork(self.environment());
+        let env = Scope::fork(self.environment());
         self.environment().borrow_mut().store_func(d.name(), Function::new(d.clone(), env));
         expr!(Type::None)
     }
@@ -582,12 +582,12 @@ impl StmtVisitor<Eval> for Interpreter {
 
 /// Evaluate a single expression.
 pub fn expr(ast: &model::Expr, out: Rc<RefCell<dyn Write>>) -> Result<Outcome, RuntimeError> {
-    let mut interpreter = Interpreter::new(Environment::new(), out);
+    let mut interpreter = Interpreter::new(Scope::new(), out);
     ast.accept(&mut interpreter).0
 }
 
 /// Interpret a list of statements.
 pub fn interpret(stmts: &model::Stmts, out: Rc<RefCell<dyn Write>>) -> Result<Outcome, RuntimeError> {
-    let mut interpreter = Interpreter::new(Environment::new(), out);
+    let mut interpreter = Interpreter::new(Scope::new(), out);
     interpreter.interpret(stmts).0
 }
