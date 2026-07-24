@@ -20,7 +20,7 @@ impl Function {
         &self.declaration
     }
 
-    pub fn environment(&self) -> &Rc<RefCell<Scope>> {
+    pub fn scope(&self) -> &Rc<RefCell<Scope>> {
         &self.environment
     }
 }

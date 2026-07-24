@@ -384,7 +384,7 @@ impl ExprVisitor<Eval> for Interpreter {
 
         // lexical scoping, the parent environment is the declaration site,
         // call site would be dynamic scoping
-        let mut fork = Interpreter::new(f.environment().clone(), self.out.clone());
+        let mut fork = Interpreter::new(Scope::fork(f.scope()), self.out.clone());
 
         for (arg, param) in c.args().iter().zip(f.declaration().params()) {
             let val = arg.accept(self)?;
