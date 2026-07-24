@@ -3,8 +3,8 @@ use std::rc::Rc;
 use crate::{
     errors::ParseError,
     model::{
-        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, FuncCall, FuncDecl, FuncParam, Identifier, If, IntegerLiteral, LogicalOp, Print,
-        Println, Ret, Stmt, Stmts, StringLiteral, UnOp, While,
+        Assignment, BinOp, BoolLiteral, Elif, Expr, FloatLiteral, For, FuncCall, FuncDecl, FuncParam, Identifier, If, IntegerLiteral, LocalAssignment,
+        LogicalOp, Print, Println, Ret, Stmt, Stmts, StringLiteral, UnOp, While,
     },
     tokens::{Token, TokenKind},
 };
@@ -12,6 +12,12 @@ use crate::{
 pub struct Parser {
     tokens: Vec<Token>,
     curr: usize,
+}
+
+macro_rules! err {
+    ($f:expr, $s:expr) => {
+        Err(ParseError::new(format!($f), $s))
+    };
 }
 
 impl Parser {
@@ -427,6 +433,18 @@ impl Parser {
         Ok(Stmt::Ret(Ret::new(value)))
     }
 
+    /// `"local" <assign>`
+    fn local_assign(&mut self) -> Result<Stmt, ParseError> {
+        let matched = self.match_curr(|tok| matches!(tok.kind(), TokenKind::Local));
+        debug_assert!(matched, "called local_assign without 'local' token");
+        let lhs = self.expr()?;
+        if !self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {
+            return err!("expected assignment after 'local' keyword", self.previous_token().span());
+        }
+        let rhs = self.expr()?;
+        Ok(Stmt::LocalAssignment(LocalAssignment::new(lhs, rhs)))
+    }
+
     /// ```ignore
     /// stmt ::= expr_stmt
     ///     | print_stmt
@@ -451,6 +469,7 @@ impl Parser {
             TokenKind::For => self.for_stmt(),
             TokenKind::Func => self.func_decl_stmt(),
             TokenKind::Ret => self.ret_stmt(),
+            TokenKind::Local => self.local_assign(),
             _ => {
                 let lhs = self.expr()?;
                 if self.match_curr(|tok| matches!(tok.kind(), TokenKind::Assign)) {

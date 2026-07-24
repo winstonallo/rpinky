@@ -261,6 +261,7 @@ pub fn match_reserved_keyword(token: &[u8], span: Span) -> Option<Token> {
         b"println" => TokenKind::Println,
         b"ret" => TokenKind::Ret,
         b"elif" => TokenKind::Elif,
+        b"local" => TokenKind::Local,
         _ => return None,
     };
     Some(Token::new(kind, span))

@@ -179,6 +179,18 @@ impl StmtVisitor<std::fmt::Result> for AstPrinter<'_, '_> {
         Ok(())
     }
 
+    fn visit_local_assignment(&mut self, a: &crate::model::LocalAssignment) -> std::fmt::Result {
+        writeln!(self.f, "{}localassignment {{", self.indent())?;
+        self.indented();
+        a.lhs().accept(self)?;
+
+        a.rhs().accept(self)?;
+        self.dedent();
+        writeln!(self.f, "{}}}", self.indent())?;
+
+        Ok(())
+    }
+
     fn visit_while(&mut self, w: &crate::model::While) -> std::fmt::Result {
         writeln!(self.f, "{}while {{", self.indent())?;
         self.indented();

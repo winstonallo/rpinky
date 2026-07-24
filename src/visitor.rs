@@ -18,6 +18,7 @@ pub trait StmtVisitor<T> {
     fn visit_println(&mut self, p: &model::Println) -> T;
     fn visit_if(&mut self, i: &model::If) -> T;
     fn visit_assignment(&mut self, a: &model::Assignment) -> T;
+    fn visit_local_assignment(&mut self, a: &model::LocalAssignment) -> T;
     fn visit_while(&mut self, w: &model::While) -> T;
     fn visit_for(&mut self, f: &model::For) -> T;
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> T;

@@ -489,6 +489,16 @@ impl StmtVisitor<Eval> for Interpreter {
         expr!(Type::None)
     }
 
+    fn visit_local_assignment(&mut self, a: &model::LocalAssignment) -> Eval {
+        let rvalue = a.rhs().accept(self)?;
+        let model::Expr::Identifier(i) = a.lhs() else {
+            return err!(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), a.lhs().span()));
+        };
+
+        self.environment().borrow_mut().store_var_local(i.name(), rvalue);
+        expr!(Type::None)
+    }
+
     fn visit_while(&mut self, w: &model::While) -> Eval {
         let mut fork = self.fork();
         loop {

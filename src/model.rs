@@ -68,6 +68,7 @@ pub enum Stmt {
     Println(Println),
     If(If),
     Assignment(Assignment),
+    LocalAssignment(LocalAssignment),
     While(While),
     For(For),
     FuncDecl(FuncDecl),
@@ -82,6 +83,7 @@ impl Stmt {
             Stmt::Println(p) => visitor.visit_println(p),
             Stmt::If(i) => visitor.visit_if(i),
             Stmt::Assignment(a) => visitor.visit_assignment(a),
+            Stmt::LocalAssignment(a) => visitor.visit_local_assignment(a),
             Stmt::While(w) => visitor.visit_while(w),
             Stmt::For(f) => visitor.visit_for(f),
             Stmt::FuncDecl(d) => visitor.visit_func_decl(d),
@@ -386,6 +388,27 @@ pub struct Assignment {
 }
 
 impl Assignment {
+    pub fn new(lhs: Expr, rhs: Expr) -> Self {
+        Self { lhs, rhs }
+    }
+
+    pub fn lhs(&self) -> &Expr {
+        &self.lhs
+    }
+
+    pub fn rhs(&self) -> &Expr {
+        &self.rhs
+    }
+}
+
+/// `<local_assign> ::= 'local' <identifier> ':=' <expr>`
+#[derive(Clone, Debug)]
+pub struct LocalAssignment {
+    lhs: Expr, // TODO: add some kind of LValue type
+    rhs: Expr,
+}
+
+impl LocalAssignment {
     pub fn new(lhs: Expr, rhs: Expr) -> Self {
         Self { lhs, rhs }
     }
