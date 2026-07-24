@@ -1,0 +1,62 @@
+-- render output on easylang.online/ide --
+
+angle := 0
+x := 25
+y := 60
+
+func pow(base, exponent)
+    ret base ^ exponent
+end
+
+func factorial(n)
+    res := 1.0
+    for i := 1, n do
+        res := res * i
+    end
+    ret res
+end
+
+func cos(a)
+    a := a * 3.141592 / 180
+    value := 1
+    sign := -1
+    n := 200
+    i := 2
+    while i < n do
+        value := value + (pow(a, i) / factorial(i) * sign)
+        i := i + 2
+        sign := sign * -1
+    end
+    ret value
+end
+
+func sin(a)
+    a := a * 3.141592 / 180
+    value := a
+    sign := -1
+    n := 200
+    i := 3
+    while i < n do
+        value := value + (pow(a, i) / factorial(i) * sign)
+        i := i + 2
+        sign := sign * -1
+    end
+    ret value
+end
+
+func dragon(size, level, d)
+
+    if level == 0 then
+        x := x - cos(angle) * size
+        y := y + sin(angle) * size
+        println("glineto " + x + " " + y)
+    else
+        dragon(size / 1.4142135624, level - 1, 1)
+        angle := angle - d * 90
+        dragon(size / 1.4142135624, level - 1, -1)
+    end
+end
+
+println("gcolor " + 50)
+println("glinewidth " + 0.3)
+dragon(60, 12, 1)
