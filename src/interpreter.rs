@@ -268,7 +268,7 @@ impl Interpreter {
         Eval(Ok(Outcome::Done(Type::None)))
     }
 
-    pub fn environment(&mut self) -> &Rc<RefCell<Scope>> {
+    pub fn scope(&mut self) -> &Rc<RefCell<Scope>> {
         &self.environment
     }
 
@@ -359,14 +359,14 @@ impl ExprVisitor<Eval> for Interpreter {
     }
 
     fn visit_identifier(&mut self, i: &model::Identifier) -> Eval {
-        match self.environment().borrow().load_var(i.name().clone()) {
+        match self.scope().borrow().load_var(i.name().clone()) {
             Some(value) => expr!(value),
             None => err!(RuntimeError::new(format!("undeclared identifier {}", i.name()), i.span())),
         }
     }
 
     fn visit_func_call(&mut self, c: &model::FuncCall) -> Eval {
-        let Some(f) = self.environment().borrow().load_func(c.name().clone()) else {
+        let Some(f) = self.scope().borrow().load_func(c.name().clone()) else {
             return err!(RuntimeError::new(format!("call to undeclared function '{}'", c.name()), c.span()));
         };
 
@@ -388,7 +388,7 @@ impl ExprVisitor<Eval> for Interpreter {
 
         for (arg, param) in c.args().iter().zip(f.declaration().params()) {
             let val = arg.accept(self)?;
-            fork.environment().borrow_mut().store_var_local(param.name(), val);
+            fork.scope().borrow_mut().store_var_local(param.name(), val);
         }
 
         match fork.interpret(f.declaration().body()) {
@@ -485,7 +485,7 @@ impl StmtVisitor<Eval> for Interpreter {
             return err!(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), a.lhs().span()));
         };
 
-        self.environment().borrow_mut().store_var(i.name(), rvalue);
+        self.scope().borrow_mut().store_var(i.name(), rvalue);
         expr!(Type::None)
     }
 
@@ -495,7 +495,7 @@ impl StmtVisitor<Eval> for Interpreter {
             return err!(RuntimeError::new(format!("cannot assign to {:?}", a.lhs()), a.lhs().span()));
         };
 
-        self.environment().borrow_mut().store_var_local(i.name(), rvalue);
+        self.scope().borrow_mut().store_var_local(i.name(), rvalue);
         expr!(Type::None)
     }
 
@@ -545,19 +545,19 @@ impl StmtVisitor<Eval> for Interpreter {
 
         let name = i.name().clone();
 
-        fork.environment().borrow_mut().store_var(&name, Type::Number(current));
+        fork.scope().borrow_mut().store_var(&name, Type::Number(current));
 
         if step_value > 0.0 {
             while current <= end_value {
                 fork.interpret(f.body())?;
                 current += step_value;
-                fork.environment().borrow_mut().store_var(&name, Type::Number(current));
+                fork.scope().borrow_mut().store_var(&name, Type::Number(current));
             }
         } else if step_value < 0.0 {
             while current >= end_value {
                 fork.interpret(f.body())?;
                 current += step_value;
-                fork.environment().borrow_mut().store_var(&name, Type::Number(current));
+                fork.scope().borrow_mut().store_var(&name, Type::Number(current));
             }
         }
 
@@ -565,8 +565,8 @@ impl StmtVisitor<Eval> for Interpreter {
     }
 
     fn visit_func_decl(&mut self, d: &model::FuncDecl) -> Eval {
-        let env = Scope::fork(self.environment());
-        self.environment().borrow_mut().store_func(d.name(), Function::new(d.clone(), env));
+        let env = Scope::fork(self.scope());
+        self.scope().borrow_mut().store_func(d.name(), Function::new(d.clone(), env));
         expr!(Type::None)
     }
 
